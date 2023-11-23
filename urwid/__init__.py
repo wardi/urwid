@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Urwid __init__.py - all the stuff you're likely to care about
 #
 #    Copyright (C) 2004-2012  Ian Ward
@@ -23,6 +21,7 @@
 
 from __future__ import annotations
 
+from urwid import raw_display
 from urwid.canvas import (
     BlankCanvas,
     Canvas,
@@ -49,109 +48,6 @@ from urwid.command_map import (
     CommandMap,
     command_map,
 )
-
-from urwid.font import (
-    Font,
-    FontRegistry,
-    HalfBlock5x4Font,
-    HalfBlock6x5Font,
-    HalfBlock7x7Font,
-    HalfBlockHeavy6x5Font,
-    Sextant2x2Font,
-    Sextant3x3Font,
-    Thin3x3Font,
-    Thin4x3Font,
-    Thin6x6Font,
-    get_all_fonts,
-)
-
-from urwid.listbox import ListBox, ListBoxError, ListWalker, ListWalkerError, SimpleFocusListWalker, SimpleListWalker
-from urwid.event_loop import EventLoop, AsyncioEventLoop, ExitMainLoop, MainLoop, SelectEventLoop
-from urwid.monitored_list import MonitoredFocusList, MonitoredList
-from urwid.signals import MetaSignals, Signals, connect_signal, disconnect_signal, emit_signal, register_signal
-from urwid.version import __version__, __version_tuple__
-from urwid.widget import (
-    ANY,
-    BOTTOM,
-    BOX,
-    CENTER,
-    CLIP,
-    ELLIPSIS,
-    FIXED,
-    FLOW,
-    GIVEN,
-    LEFT,
-    MIDDLE,
-    PACK,
-    RELATIVE,
-    RELATIVE_100,
-    RIGHT,
-    SPACE,
-    TOP,
-    WEIGHT,
-    Align,
-    Sizing,
-    VAlign,
-    WHSettings,
-    WrapMode,
-    BoxWidget,
-    Divider,
-    Edit,
-    EditError,
-    FixedWidget,
-    FlowWidget,
-    IntEdit,
-    SolidFill,
-    Text,
-    TextError,
-    Widget,
-    WidgetError,
-    WidgetMeta,
-    WidgetWrap,
-    WidgetWrapError,
-    delegate_to_widget_mixin,
-    fixed_size,
-    WidgetPlaceholder,
-    AttrMap,
-    AttrMapError,
-    AttrWrap,
-    BoxAdapter,
-    BoxAdapterError,
-    WidgetDisable,
-    Filler,
-    FillerError,
-    Padding,
-    PaddingError,
-    WidgetDecoration,
-    GridFlow,
-    GridFlowError,
-    Frame,
-    FrameError,
-    Overlay,
-    OverlayError,
-    Pile,
-    PileError,
-    Columns,
-    ColumnsError,
-    WidgetContainerMixin,
-    PopUpLauncher,
-    PopUpTarget,
-    Button,
-    CheckBox,
-    CheckBoxError,
-    RadioButton,
-    SelectableIcon,
-    BigText,
-    LineBox,
-    BarGraph,
-    BarGraphError,
-    BarGraphMeta,
-    GraphVScale,
-    scale_bar_values,
-    ProgressBar,
-)
-
-from urwid import raw_display
 from urwid.display_common import (
     BLACK,
     BROWN,
@@ -177,8 +73,25 @@ from urwid.display_common import (
     RealTerminal,
     ScreenError,
 )
+from urwid.event_loop import AsyncioEventLoop, EventLoop, ExitMainLoop, MainLoop, SelectEventLoop
+from urwid.font import (
+    Font,
+    FontRegistry,
+    HalfBlock5x4Font,
+    HalfBlock6x5Font,
+    HalfBlock7x7Font,
+    HalfBlockHeavy6x5Font,
+    Sextant2x2Font,
+    Sextant3x3Font,
+    Thin3x3Font,
+    Thin4x3Font,
+    Thin6x6Font,
+    get_all_fonts,
+)
+from urwid.listbox import ListBox, ListBoxError, ListWalker, ListWalkerError, SimpleFocusListWalker, SimpleListWalker
+from urwid.monitored_list import MonitoredFocusList, MonitoredList
+from urwid.signals import MetaSignals, Signals, connect_signal, disconnect_signal, emit_signal, register_signal
 from urwid.text_layout import LayoutSegment, StandardTextLayout, TextLayout, default_layout
-from urwid.treetools import ParentNode, TreeListBox, TreeNode, TreeWalker, TreeWidget, TreeWidgetError
 from urwid.util import (
     MetaSuper,
     TagMarkupException,
@@ -198,7 +111,93 @@ from urwid.util import (
     supports_unicode,
     within_double_byte,
 )
+from urwid.version import version as __version__
+from urwid.version import version_tuple as __version_tuple__
 from urwid.vterm import TermCanvas, TermCharset, Terminal, TermModes, TermScroller
+from urwid.widget import (
+    ANY,
+    BOTTOM,
+    BOX,
+    CENTER,
+    CLIP,
+    ELLIPSIS,
+    FIXED,
+    FLOW,
+    GIVEN,
+    LEFT,
+    MIDDLE,
+    PACK,
+    RELATIVE,
+    RELATIVE_100,
+    RIGHT,
+    SPACE,
+    TOP,
+    WEIGHT,
+    Align,
+    AttrMap,
+    AttrMapError,
+    AttrWrap,
+    BarGraph,
+    BarGraphError,
+    BarGraphMeta,
+    BigText,
+    BoxAdapter,
+    BoxAdapterError,
+    BoxWidget,
+    Button,
+    CheckBox,
+    CheckBoxError,
+    Columns,
+    ColumnsError,
+    Divider,
+    Edit,
+    EditError,
+    Filler,
+    FillerError,
+    FixedWidget,
+    FlowWidget,
+    Frame,
+    FrameError,
+    GraphVScale,
+    GridFlow,
+    GridFlowError,
+    IntEdit,
+    LineBox,
+    Overlay,
+    OverlayError,
+    Padding,
+    PaddingError,
+    Pile,
+    PileError,
+    PopUpLauncher,
+    PopUpTarget,
+    ProgressBar,
+    RadioButton,
+    SelectableIcon,
+    Sizing,
+    SolidFill,
+    Text,
+    TextError,
+    VAlign,
+    WHSettings,
+    Widget,
+    WidgetContainerMixin,
+    WidgetDecoration,
+    WidgetDisable,
+    WidgetError,
+    WidgetMeta,
+    WidgetPlaceholder,
+    WidgetWrap,
+    WidgetWrapError,
+    WrapMode,
+    delegate_to_widget_mixin,
+    fixed_size,
+    scale_bar_values,
+)
+
+from . import event_loop, widget
+
+from urwid.treetools import ParentNode, TreeListBox, TreeNode, TreeWalker, TreeWidget, TreeWidgetError  # isort: skip
 
 # Optional event loops with external dependencies
 

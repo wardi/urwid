@@ -112,7 +112,7 @@ class ProgressBar(Widget):
         cs = 0
         if self.satt is not None:
             cs = int((cf - ccol) * 8)
-        if ccol < 0 or (ccol == 0 and cs == 0):
+        if ccol < 0 or (ccol == cs == 0):
             c._attr = [[(self.normal, maxcol)]]
         elif ccol >= maxcol:
             c._attr = [[(self.complete, maxcol)]]

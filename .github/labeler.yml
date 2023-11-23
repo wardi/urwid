@@ -5,8 +5,11 @@
 "Maintenance":
   - all:
       - ".github/**"
-      - "!.github/workflows/**"
+
+"tests":
+  - all:
+      - "tests/**"
 
 "docs":
-  - all:
+  - any:
       - "docs/**"

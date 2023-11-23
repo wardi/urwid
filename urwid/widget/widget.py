@@ -34,7 +34,7 @@ from urwid.util import MetaSuper
 from .constants import Sizing
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Hashable
 
 
 class WidgetMeta(MetaSuper, signals.MetaSignals):
@@ -422,7 +422,7 @@ class Widget(metaclass=WidgetMeta):
         """
         CanvasCache.invalidate(self)
 
-    def _emit(self, name: str, *args):
+    def _emit(self, name: Hashable, *args):
         """
         Convenience function to emit signals with self as first
         argument.

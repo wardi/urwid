@@ -501,7 +501,6 @@ class Frame(Widget, WidgetContainerMixin):
 
         Return None as a placeholder for future options.
         """
-        return
 
     def frame_top_bottom(self, size: tuple[int, int], focus: bool) -> tuple[tuple[int, int], tuple[int, int]]:
         """

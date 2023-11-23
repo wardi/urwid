@@ -22,7 +22,7 @@ from .constants import (
     simplify_valign,
     simplify_width,
 )
-from .container import WidgetContainerMixin
+from .container import WidgetContainerListContentsMixin, WidgetContainerMixin
 from .divider import Divider
 from .edit import Edit, EditError, IntEdit
 from .filler import Filler, FillerError, calculate_top_bottom_filler
@@ -144,6 +144,7 @@ __all__ = (
     "GraphVScale",
     "scale_bar_values",
     "ProgressBar",
+    "WidgetContainerListContentsMixin",
 )
 
 # Backward compatibility

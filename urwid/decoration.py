@@ -57,9 +57,9 @@ __all__ = (
 )
 
 warnings.warn(
-    f'{__name__!r} is not expected to be imported directly. '
+    f"{__name__!r} is not expected to be imported directly. "
     'Please use public access from "urwid" package. '
-    f'Module {__name__!r} is deprecated and will be removed in the future.',
+    f"Module {__name__!r} is deprecated and will be removed in the future.",
     DeprecationWarning,
     stacklevel=3,
 )

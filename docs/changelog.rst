@@ -2,71 +2,10 @@
 Changelog
 ---------
 
-Urwid 2.2.0
-===========
-
-2023-09-21
-
-* Python 3.7+ migration, Python < 3.7 support dropped
-
-* Deprecate legacy property creation
-
-* Deprecate `__super` hack and use native `super()`
-
-* ZMQ event loop (by Dave Jones)
-
-* Add two fonts based on Unicode 13 2x3 TRS-80/Teletext mosaic characters (by Ricardo Bánffy)
-
-* Adds 256 color and truecolor support to vterm (by Daniel Schwarz)
-
-* Vterm now emits 'resize' signal upon terminal resize (by Daniel Schwarz)
-
-* vterm.py: Adds support for bracketed paste mode (by Daniel Schwarz)
-
-* Pass SelectableIcon `align` and `wrap` arguments to parent
-
-* Fix: restore normal screen on ctrl-z (by Andrey Proskurin)
-
-* Reconnect the 'modified' signal after setting a new ListBox.body (by @exquo)
-
-* Allow signal handling interoperability with raw display (by @AnonymouX47)
-
-* Fix alternate/normal screen buffer switch for raw display (by @AnonymouX47)
-
-* Fix text layout for align="center", wrap="clip" when maxcol == line_width - 1 (by @AnonymouX47)
-
-* Fix assertion failure when string contains SO but not SI (by Martin Cooper)
-
-* Fix empty markup handling
-
-* Fix "FloatEdit mangles decimals" (by Daniel Sheffield)
-
-* vterm: Fixed OSC 0,2 to set widget title properly (decode bytestring) (by Daniel Schwarz)
-
-* vterm: Fixed a crash bug with DECALN command (by Daniel Schwarz)
-
-* export `ELLIPSIS` constant
-
-* add `__len__` to listbox with validation if body `Sized`
-
-* Fix merging attributes while decomposing tag markup (by Martin André)
-
-* Fix: use trio.lowlevel instead of trio.hazmat with Trio >= 0.15 (by Tamás Nepusz)
-
-* Fix TypeError in signals module on weak object finalize by GC (by Roman Guchevskij)
-
-* Include _resize_pipe_rd in fd_list for _wait_for_input_ready for raw_display (by Andreas Klöckner)
-
-* container: fix duplicate text (by Mike Frysinger)
-
-* Provide 80x24 fallback for ansi and vt100 (by Kit Rhett Aultman)
-
-* Use == instead of "is" for equality testing (by @naglis)
-
-* Split event loop in several modules
-
-* Split widget and introduce base enums
-
+.. changelog::
+    :changelog-url: https://urwid.org/changelog.html
+    :github: https://github.com/urwid/urwid/releases/
+    :pypi: https://pypi.org/project/urwid/
 
 Urwid 2.1.2
 ===========

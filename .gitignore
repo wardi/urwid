@@ -452,3 +452,6 @@ secring.*
 /urwid/version.py
 # Built packages
 /wheelhouse
+
+### Documentation build
+/build

@@ -142,7 +142,7 @@ input_sequences = [
         for modifier, symbol in zip(("shift ", "meta "), "$^")
         for digit, key in zip("235678", ("insert", "delete", "page up", "page down", "home", "end"))
     ),
-    *((f"O{chr(ord('p') + n)}", str(n)) for n in range(10)),
+    *((f"O{ord('p') + n:c}", str(n)) for n in range(10)),
     *(
         # modified cursor keys + home, end, 5 -- [#X and [1;#X forms
         (prefix + digit + letter, escape_modifier(digit) + key)
@@ -446,9 +446,9 @@ def process_keyqueue(codes: Sequence[int], more_available: bool) -> tuple[list[s
     if code in _keyconv:
         return [_keyconv[code]], codes[1:]
     if 0 < code < 27:
-        return [f"ctrl {chr(ord('a') + code - 1)}"], codes[1:]
+        return [f"ctrl {ord('a') + code - 1:c}"], codes[1:]
     if 27 < code < 32:
-        return [f"ctrl {chr(ord('A') + code - 1)}"], codes[1:]
+        return [f"ctrl {ord('A') + code - 1:c}"], codes[1:]
 
     em = str_util.get_byte_encoding()
 

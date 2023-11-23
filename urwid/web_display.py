@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Urwid web (CGI/Asynchronous Javascript) display module
 #    Copyright (C) 2004-2007  Ian Ward
 #
@@ -25,19 +23,25 @@ Urwid web application display module
 """
 from __future__ import annotations
 
+import dataclasses
 import glob
 import os
 import random
 import select
 import signal
 import socket
+import string
 import sys
+import tempfile
 import typing
+from contextlib import suppress
 
 from urwid import util
 
 if typing.TYPE_CHECKING:
     from typing_extensions import Literal
+
+TEMP_DIR = tempfile.gettempdir()
 
 _js_code = r"""
 // Urwid web (CGI/Asynchronous Javascript) display module
@@ -513,22 +517,22 @@ MAX_READ = 4096
 BUF_SZ = 16384
 
 _code_colours = {
-    'black':        "0",
-    'dark red':        "1",
-    'dark green':        "2",
-    'brown':        "3",
-    'dark blue':        "4",
-    'dark magenta':        "5",
-    'dark cyan':        "6",
-    'light gray':        "7",
-    'dark gray':        "8",
-    'light red':        "9",
-    'light green':        "A",
-    'yellow':        "B",
-    'light blue':        "C",
-    'light magenta':    "D",
-    'light cyan':        "E",
-    'white':        "F",
+    "black": "0",
+    "dark red": "1",
+    "dark green": "2",
+    "brown": "3",
+    "dark blue": "4",
+    "dark magenta": "5",
+    "dark cyan": "6",
+    "light gray": "7",
+    "dark gray": "8",
+    "light red": "9",
+    "light green": "A",
+    "yellow": "B",
+    "light blue": "C",
+    "light magenta": "D",
+    "light cyan": "E",
+    "white": "F",
 }
 
 # replace control characters with ?'s
@@ -551,13 +555,16 @@ form { margin: 0 0 8px 0; }
 
 # HTML Initial Page
 _html_page = [
-"""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+    """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
  "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
-<title>Urwid Web Display - ""","""</title>
+<title>Urwid Web Display - """,
+    """</title>
 <style type="text/css">
-""" + _css_style + r"""
+"""
+    + _css_style
+    + r"""
 </style>
 </head>
 <body id="body" onload="load_web_display()">
@@ -566,17 +573,22 @@ _html_page = [
 <pre>The quick brown fox jumps over the lazy dog.<span id="testchar">X</span>
 <span id="testchar2">Y</span></pre>
 </div>
-Urwid Web Display - <b>""","""</b> -
+Urwid Web Display - <b>""",
+    """</b> -
 Status: <span id="status">Set up</span>
 <script type="text/javascript">
 //<![CDATA[
-""" + _js_code +"""
+"""
+    + _js_code
+    + """
 //]]>
 </script>
 <pre id="text"></pre>
 </body>
 </html>
-"""]
+""",
+]
+
 
 class Screen:
     def __init__(self):
@@ -588,27 +600,27 @@ class Screen:
     def started(self):
         return self._started
 
-    def register_palette( self, l ):
+    def register_palette(self, palette):
         """Register a list of palette entries.
 
-        l -- list of (name, foreground, background) or
-             (name, same_as_other_name) palette entries.
+        palette -- list of (name, foreground, background) or
+                   (name, same_as_other_name) palette entries.
 
         calls self.register_palette_entry for each item in l
         """
 
-        for item in l:
-            if len(item) in (3,4):
-                self.register_palette_entry( *item )
+        for item in palette:
+            if len(item) in (3, 4):
+                self.register_palette_entry(*item)
                 continue
-            assert len(item) == 2, "Invalid register_palette usage"
+            if len(item) != 2:
+                raise ValueError(f"Invalid register_palette usage: {item!r}")
             name, like_name = item
             if like_name not in self.palette:
-                raise Exception(f"palette entry '{like_name}' doesn't exist")
+                raise KeyError(f"palette entry '{like_name}' doesn't exist")
             self.palette[name] = self.palette[like_name]
 
-    def register_palette_entry( self, name, foreground, background,
-        mono=None):
+    def register_palette_entry(self, name, foreground, background, mono=None):
         """Register a single palette entry.
 
         name -- new entry/attribute name
@@ -640,52 +652,51 @@ class Screen:
         web_display.set_preferences(..) must be called before calling
         this function for the preferences to take effect
         """
-        global _prefs
-
         if self._started:
             return util.StoppingContext(self)
 
         client_init = sys.stdin.read(50)
-        assert client_init.startswith("window resize "),client_init
-        ignore1,ignore2,x,y = client_init.split(" ",3)
+        if not client_init.startswith("window resize "):
+            raise ValueError(client_init)
+        _ignore1, _ignore2, x, y = client_init.split(" ", 3)
         x = int(x)
         y = int(y)
-        self._set_screen_size( x, y )
+        self._set_screen_size(x, y)
         self.last_screen = {}
         self.last_screen_width = 0
 
         self.update_method = os.environ["HTTP_X_URWID_METHOD"]
-        assert self.update_method in ("multipart","polling")
+        if self.update_method not in ("multipart", "polling"):
+            raise ValueError(self.update_method)
 
         if self.update_method == "polling" and not _prefs.allow_polling:
             sys.stdout.write("Status: 403 Forbidden\r\n\r\n")
             sys.exit(0)
 
-        clients = glob.glob(os.path.join(_prefs.pipe_dir,"urwid*.in"))
+        clients = glob.glob(os.path.join(_prefs.pipe_dir, "urwid*.in"))
         if len(clients) >= _prefs.max_clients:
             sys.stdout.write("Status: 503 Sever Busy\r\n\r\n")
             sys.exit(0)
 
-        urwid_id = "%09d%09d"%(random.randrange(10**9),
-            random.randrange(10**9))
-        self.pipe_name = os.path.join(_prefs.pipe_dir,f"urwid{urwid_id}")
-        os.mkfifo(f"{self.pipe_name}.in",0o600)
-        signal.signal(signal.SIGTERM,self._cleanup_pipe)
+        urwid_id = f"{random.randrange(10 ** 9):09d}{random.randrange(10 ** 9):09d}"  # noqa: S311
+        self.pipe_name = os.path.join(_prefs.pipe_dir, f"urwid{urwid_id}")
+        os.mkfifo(f"{self.pipe_name}.in", 0o600)
+        signal.signal(signal.SIGTERM, self._cleanup_pipe)
 
-        self.input_fd = os.open(f"{self.pipe_name}.in",
-            os.O_NONBLOCK | os.O_RDONLY)
+        self.input_fd = os.open(f"{self.pipe_name}.in", os.O_NONBLOCK | os.O_RDONLY)
         self.input_tail = ""
-        self.content_head = ("Content-type: "
+        self.content_head = (
+            "Content-type: "
             "multipart/x-mixed-replace;boundary=ZZ\r\n"
-            "X-Urwid-ID: "+urwid_id+"\r\n"
+            "X-Urwid-ID: " + urwid_id + "\r\n"
             "\r\n\r\n"
-            "--ZZ\r\n")
-        if self.update_method=="polling":
-            self.content_head = (
-                f'Content-type: text/plain\r\nX-Urwid-ID: {urwid_id}\r\n\r\n\r\n')
+            "--ZZ\r\n"
+        )
+        if self.update_method == "polling":
+            self.content_head = f"Content-type: text/plain\r\nX-Urwid-ID: {urwid_id}\r\n\r\n\r\n"
 
-        signal.signal(signal.SIGALRM,self._handle_alarm)
-        signal.alarm( ALARM_DELAY )
+        signal.signal(signal.SIGALRM, self._handle_alarm)
+        signal.alarm(ALARM_DELAY)
         self._started = True
 
         return util.StoppingContext(self)
@@ -698,18 +709,16 @@ class Screen:
             return
 
         # XXX which exceptions does this actually raise? EnvironmentError?
-        try:
+        with suppress(Exception):
             self._close_connection()
-        except Exception:
-            pass
-        signal.signal(signal.SIGTERM,signal.SIG_DFL)
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         self._cleanup_pipe()
         self._started = False
 
     def set_input_timeouts(self, *args):
         pass
 
-    def run_wrapper(self,fn):
+    def run_wrapper(self, fn):
         """
         Run the application main loop, calling start() first
         and stop() on exit.
@@ -720,7 +729,6 @@ class Screen:
         finally:
             self.stop()
 
-
     def _close_connection(self):
         if self.update_method == "polling child":
             self.server_socket.settimeout(0)
@@ -729,20 +737,18 @@ class Screen:
             sock.close()
 
         if self.update_method == "multipart":
-            sys.stdout.write("\r\nZ"
-                "\r\n--ZZ--\r\n")
+            sys.stdout.write("\r\nZ\r\n--ZZ--\r\n")
             sys.stdout.flush()
 
     def _cleanup_pipe(self, *args):
-        if not self.pipe_name: return
+        if not self.pipe_name:
+            return
         # XXX which exceptions does this actually raise? EnvironmentError?
-        try:
+        with suppress(Exception):
             os.remove(f"{self.pipe_name}.in")
             os.remove(f"{self.pipe_name}.update")
-        except Exception:
-            pass
 
-    def _set_screen_size(self, cols, rows ):
+    def _set_screen_size(self, cols, rows):
         """Set the screen size (within max size)."""
 
         if cols > MAX_COLS:
@@ -751,7 +757,7 @@ class Screen:
             rows = MAX_ROWS
         self.screen_size = cols, rows
 
-    def draw_screen(self, size, r ):
+    def draw_screen(self, size, r):
         """Send a screen update to the client."""
 
         (cols, rows) = size
@@ -764,19 +770,20 @@ class Screen:
         if self.update_method == "polling":
             send = sendq.append
         elif self.update_method == "polling child":
-            signal.alarm( 0 )
+            signal.alarm(0)
             try:
                 s, addr = self.server_socket.accept()
             except socket.timeout:
                 sys.exit(0)
             send = s.sendall
         else:
-            signal.alarm( 0 )
+            signal.alarm(0)
             send = sendq.append
             send("\r\n")
             self.content_head = ""
 
-        assert r.rows() == rows
+        if r.rows() != rows:
+            raise ValueError(rows)
 
         if r.cursor is not None:
             cx, cy = r.cursor
@@ -788,42 +795,41 @@ class Screen:
         y = -1
         for row in r.content():
             y += 1
-            row = list(row)
+            l_row = list(row)
 
-            l = []
+            line = []
 
-            sig = tuple(row)
-            if y == cy: sig = sig + (cx,)
-            new_screen[sig] = new_screen.get(sig,[]) + [y]
+            sig = tuple(l_row)
+            if y == cy:
+                sig = (*sig, cx)
+            new_screen[sig] = [*new_screen.get(sig, []), y]
             old_line_numbers = self.last_screen.get(sig, None)
             if old_line_numbers is not None:
                 if y in old_line_numbers:
                     old_line = y
                 else:
                     old_line = old_line_numbers[0]
-                send( "<%d\n"%old_line )
+                send("<%d\n" % old_line)
                 continue
 
             col = 0
-            for (a, cs, run) in row:
-                run = run.translate(_trans_table)
+            for a, _cs, run in l_row:
+                t_run = run.translate(_trans_table)
                 if a is None:
-                    fg,bg,mono = "black", "light gray", None
+                    fg, bg, mono = "black", "light gray", None
                 else:
-                    fg,bg,mono = self.palette[a]
+                    fg, bg, mono = self.palette[a]
                 if y == cy and col <= cx:
-                    run_width = util.calc_width(run, 0,
-                        len(run))
-                    if col+run_width > cx:
-                        l.append(code_span(run, fg, bg,
-                            cx-col))
+                    run_width = util.calc_width(t_run, 0, len(t_run))
+                    if col + run_width > cx:
+                        line.append(code_span(t_run, fg, bg, cx - col))
                     else:
-                        l.append(code_span(run, fg, bg))
+                        line.append(code_span(t_run, fg, bg))
                     col += run_width
                 else:
-                    l.append(code_span(run, fg, bg))
+                    line.append(code_span(t_run, fg, bg))
 
-            send(f"{''.join(l)}\n")
+            send(f"{''.join(line)}\n")
         self.last_screen = new_screen
         self.last_screen_width = cols
 
@@ -834,13 +840,12 @@ class Screen:
             self._fork_child()
         elif self.update_method == "polling child":
             s.close()
-        else: # update_method == "multipart"
+        else:  # update_method == "multipart"
             send("\r\n--ZZ\r\n")
             sys.stdout.write("".join(sendq))
             sys.stdout.flush()
 
-        signal.alarm( ALARM_DELAY )
-
+        signal.alarm(ALARM_DELAY)
 
     def clear(self):
         """
@@ -851,24 +856,23 @@ class Screen:
         """
         pass
 
-
     def _fork_child(self):
         """
         Fork a child to run CGI disconnected for polling update method.
         Force parent process to exit.
         """
-        daemonize( f"{self.pipe_name}.err" )
-        self.input_fd = os.open(f"{self.pipe_name}.in",
-            os.O_NONBLOCK | os.O_RDONLY)
+        daemonize(f"{self.pipe_name}.err")
+        self.input_fd = os.open(f"{self.pipe_name}.in", os.O_NONBLOCK | os.O_RDONLY)
         self.update_method = "polling child"
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        s.bind( f"{self.pipe_name}.update" )
+        s.bind(f"{self.pipe_name}.update")
         s.listen(1)
         s.settimeout(POLL_CONNECT)
         self.server_socket = s
 
     def _handle_alarm(self, sig, frame):
-        assert self.update_method in ("multipart","polling child")
+        if self.update_method not in ("multipart", "polling child"):
+            raise ValueError(self.update_method)
         if self.update_method == "polling child":
             # send empty update
             try:
@@ -880,8 +884,7 @@ class Screen:
             # send empty update
             sys.stdout.write("\r\n\r\n--ZZ\r\n")
             sys.stdout.flush()
-        signal.alarm( ALARM_DELAY )
-
+        signal.alarm(ALARM_DELAY)
 
     def get_cols_rows(self):
         """Return the screen size."""
@@ -897,11 +900,11 @@ class Screen:
 
     def get_input(self, raw_keys: bool = False) -> list[str] | tuple[list[str], list[int]]:
         """Return pending input as a list."""
-        l = []
+        pending_input = []
         resized = False
 
         try:
-            iready, oready, eready = select.select([self.input_fd],[],[],0.5)
+            iready, oready, eready = select.select([self.input_fd], [], [], 0.5)
         except OSError as e:
             # return on interruptions
             if e.args[0] == 4:
@@ -918,7 +921,7 @@ class Screen:
         keydata = os.read(self.input_fd, MAX_READ)
         os.close(self.input_fd)
         self.input_fd = os.open(f"{self.pipe_name}.in", os.O_NONBLOCK | os.O_RDONLY)
-        #sys.stderr.write( repr((keydata,self.input_tail))+"\n" )
+        # sys.stderr.write( repr((keydata,self.input_tail))+"\n" )
         keys = keydata.split("\n")
         keys[0] = self.input_tail + keys[0]
         self.input_tail = keys[-1]
@@ -931,35 +934,46 @@ class Screen:
                 self._set_screen_size(x, y)
                 resized = True
             else:
-                l.append(k)
+                pending_input.append(k)
         if resized:
-            l.append("window resize")
+            pending_input.append("window resize")
 
         if raw_keys:
-            return l, []
-        return l
+            return pending_input, []
+        return pending_input
 
 
-def code_span( s, fg, bg, cursor = -1):
-    code_fg = _code_colours[ fg ]
-    code_bg = _code_colours[ bg ]
+def code_span(s, fg, bg, cursor=-1):
+    code_fg = _code_colours[fg]
+    code_bg = _code_colours[bg]
 
     if cursor >= 0:
         c_off, _ign = util.calc_text_pos(s, 0, len(s), cursor)
         c2_off = util.move_next_char(s, c_off, len(s))
 
-        return ( code_fg + code_bg + s[:c_off] + "\n" +
-             code_bg + code_fg + s[c_off:c2_off] + "\n" +
-             code_fg + code_bg + s[c2_off:] + "\n")
-    else:
-        return f"{code_fg + code_bg + s}\n"
+        return (
+            code_fg
+            + code_bg
+            + s[:c_off]
+            + "\n"
+            + code_bg
+            + code_fg
+            + s[c_off:c2_off]
+            + "\n"
+            + code_fg
+            + code_bg
+            + s[c2_off:]
+            + "\n"
+        )
+
+    return f"{code_fg + code_bg + s}\n"
 
 
 def html_escape(text):
     """Escape text so that it will be displayed safely within HTML"""
-    text = text.replace('&','&amp;')
-    text = text.replace('<','&lt;')
-    text = text.replace('>','&gt;')
+    text = text.replace("&", "&amp;")
+    text = text.replace("<", "&lt;")
+    text = text.replace(">", "&gt;")
     return text
 
 
@@ -967,7 +981,8 @@ def is_web_request():
     """
     Return True if this is a CGI web request.
     """
-    return 'REQUEST_METHOD' in os.environ
+    return "REQUEST_METHOD" in os.environ
+
 
 def handle_short_request():
     """
@@ -979,80 +994,82 @@ def handle_short_request():
     web_display.set_preferences(..) should be called before calling this
     function for the preferences to take effect
     """
-    global _prefs
-
     if not is_web_request():
         return False
 
-    if os.environ['REQUEST_METHOD'] == "GET":
+    if os.environ["REQUEST_METHOD"] == "GET":
         # Initial request, send the HTML and javascript.
-        sys.stdout.write("Content-type: text/html\r\n\r\n" +
-            html_escape(_prefs.app_name).join(_html_page))
+        sys.stdout.write("Content-type: text/html\r\n\r\n" + html_escape(_prefs.app_name).join(_html_page))
         return True
 
-    if os.environ['REQUEST_METHOD'] != "POST":
+    if os.environ["REQUEST_METHOD"] != "POST":
         # Don't know what to do with head requests etc.
         return False
 
-    if 'HTTP_X_URWID_ID' not in os.environ:
+    if "HTTP_X_URWID_ID" not in os.environ:
         # If no urwid id, then the application should be started.
         return False
 
-    urwid_id = os.environ['HTTP_X_URWID_ID']
-    if len(urwid_id)>20:
-        #invalid. handle by ignoring
-        #assert 0, "urwid id too long!"
+    urwid_id = os.environ["HTTP_X_URWID_ID"]
+    if len(urwid_id) > 20:
+        # invalid. handle by ignoring
+        # assert 0, "urwid id too long!"
         sys.stdout.write("Status: 414 URI Too Long\r\n\r\n")
         return True
     for c in urwid_id:
-        if c not in "0123456789":
+        if c not in string.digits:
             # invald. handle by ignoring
-            #assert 0, "invalid chars in id!"
+            # assert 0, "invalid chars in id!"
             sys.stdout.write("Status: 403 Forbidden\r\n\r\n")
             return True
 
-    if os.environ.get('HTTP_X_URWID_METHOD',None) == "polling":
+    if os.environ.get("HTTP_X_URWID_METHOD", None) == "polling":
         # this is a screen update request
         s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         try:
-            s.connect( os.path.join(_prefs.pipe_dir,
-                f"urwid{urwid_id}.update") )
-            data = f'Content-type: text/plain\r\n\r\n{s.recv(BUF_SZ)}'
+            s.connect(os.path.join(_prefs.pipe_dir, f"urwid{urwid_id}.update"))
+            data = f"Content-type: text/plain\r\n\r\n{s.recv(BUF_SZ)}"
             while data:
                 sys.stdout.write(data)
                 data = s.recv(BUF_SZ)
-            return True
         except OSError:
             sys.stdout.write("Status: 404 Not Found\r\n\r\n")
             return True
+        return True
 
     # this is a keyboard input request
     try:
-        fd = os.open((os.path.join(_prefs.pipe_dir,
-            f"urwid{urwid_id}.in")), os.O_WRONLY)
+        fd = os.open((os.path.join(_prefs.pipe_dir, f"urwid{urwid_id}.in")), os.O_WRONLY)
     except OSError:
         sys.stdout.write("Status: 404 Not Found\r\n\r\n")
         return True
 
     # FIXME: use the correct encoding based on the request
     keydata = sys.stdin.read(MAX_READ)
-    os.write(fd,keydata.encode('ascii'))
+    os.write(fd, keydata.encode("ascii"))
     os.close(fd)
     sys.stdout.write("Content-type: text/plain\r\n\r\n")
 
     return True
 
 
+@dataclasses.dataclass
 class _Preferences:
-    app_name = "Unnamed Application"
-    pipe_dir = "/tmp"
-    allow_polling = True
-    max_clients = 20
+    app_name: str = "Unnamed Application"
+    pipe_dir: str = TEMP_DIR
+    allow_polling: bool = True
+    max_clients: int = 20
+
 
 _prefs = _Preferences()
 
-def set_preferences( app_name, pipe_dir="/tmp", allow_polling=True,
-    max_clients=20 ):
+
+def set_preferences(
+    app_name: str,
+    pipe_dir: str = TEMP_DIR,
+    allow_polling: bool = True,
+    max_clients: int = 20,
+) -> None:
     """
     Set web_display preferences.
 
@@ -1065,7 +1082,6 @@ def set_preferences( app_name, pipe_dir="/tmp", allow_polling=True,
                pool is shared by all urwid applications
                using the same pipe_dir
     """
-    global _prefs
     _prefs.app_name = app_name
     _prefs.pipe_dir = pipe_dir
     _prefs.allow_polling = allow_polling
@@ -1073,13 +1089,15 @@ def set_preferences( app_name, pipe_dir="/tmp", allow_polling=True,
 
 
 class ErrorLog:
-    def __init__(self, errfile ):
+    def __init__(self, errfile):
         self.errfile = errfile
+
     def write(self, err):
-        open(self.errfile,"a").write(err)
+        with open(self.errfile, "a") as f:
+            f.write(err)
 
 
-def daemonize( errfile ):
+def daemonize(errfile):
     """
     Detach process and become a daemon.
     """
@@ -1096,13 +1114,10 @@ def daemonize( errfile ):
         os._exit(0)
 
     os.chdir("/")
-    for fd in range(0,20):
-        try:
+    for fd in range(0, 20):
+        with suppress(OSError):
             os.close(fd)
-        except OSError:
-            pass
 
-    sys.stdin = open("/dev/null")
-    sys.stdout = open("/dev/null","w")
-    sys.stderr = ErrorLog( errfile )
-
+    sys.stdin = open("/dev/null")  # noqa: SIM115
+    sys.stdout = open("/dev/null", "w")  # noqa: SIM115
+    sys.stderr = ErrorLog(errfile)

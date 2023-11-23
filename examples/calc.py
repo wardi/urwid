@@ -34,6 +34,8 @@ Features:
 
 from __future__ import annotations
 
+import operator
+import string
 import typing
 
 import urwid
@@ -48,7 +50,7 @@ else:
 
 
 def div_or_none(a, b):
-    """Divide a by b.  Return result or None on divide by zero."""
+    """Divide a by b. Return result or None on divide by zero."""
     if b == 0:
         return None
     return a / b
@@ -56,9 +58,9 @@ def div_or_none(a, b):
 
 # operators supported and the functions used to calculate a result
 OPERATORS = {
-    "+": (lambda a, b: a + b),
-    "-": (lambda a, b: a - b),
-    "*": (lambda a, b: a * b),
+    "+": operator.add,
+    "-": operator.sub,
+    "*": operator.mul,
     "/": div_or_none,
 }
 
@@ -136,7 +138,7 @@ class Cell:
             return False
         if next_cell is None:
             return True
-        if self.op == "+" and next_cell.op == "+":
+        if self.op == next_cell.op == "+":
             return False
         return True
 
@@ -221,7 +223,7 @@ class ParentEdit(urwid.Edit):
 
         if key == "backspace":
             raise ColumnDeleteEvent(self.letter, from_parent=True)
-        if key in list("0123456789"):
+        if key in string.digits:
             raise CalcEvent(E_invalid_in_parent_cell)
 
         return key

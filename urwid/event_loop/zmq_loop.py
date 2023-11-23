@@ -24,6 +24,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import errno
 import heapq
 import os
@@ -209,15 +210,13 @@ class ZMQEventLoop(EventLoop):
         Start the event loop. Exit the loop when any callback raises an
         exception. If :exc:`ExitMainLoop` is raised, exit cleanly.
         """
-        try:
+        with contextlib.suppress(ExitMainLoop):
             while True:
                 try:
                     self._loop()
                 except zmq.error.ZMQError as exc:  # noqa: PERF203
                     if exc.errno != errno.EINTR:
                         raise
-        except ExitMainLoop:
-            pass
 
     def _loop(self) -> None:
         """

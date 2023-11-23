@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Urwid signal dispatching
 #    Copyright (C) 2004-2012  Ian Ward
 #
@@ -26,7 +24,9 @@ import itertools
 import typing
 import warnings
 import weakref
-from collections.abc import Callable, Collection, Container, Iterable
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Callable, Collection, Container, Hashable, Iterable
 
 
 class MetaSignals(type):
@@ -34,10 +34,11 @@ class MetaSignals(type):
     register the list of signals in the class variable signals,
     including signals in superclasses.
     """
+
     def __init__(cls, name: str, bases: tuple[type, ...], d: dict[str, typing.Any]) -> None:
         signals = d.get("signals", [])
         for superclass in cls.__bases__:
-            signals.extend(getattr(superclass, 'signals', []))
+            signals.extend(getattr(superclass, "signals", []))
         signals = list({x: None for x in signals}.keys())
         d["signals"] = signals
         register_signal(cls, signals)
@@ -57,16 +58,17 @@ class Key:
     Minimal class, whose only purpose is to produce objects with a
     unique hash
     """
+
     __slots__ = ()
 
 
 class Signals:
-    _signal_attr = '_urwid_signals'  # attribute to attach to signal senders
+    _signal_attr = "_urwid_signals"  # attribute to attach to signal senders
 
     def __init__(self):
         self._supported = {}
 
-    def register(self, sig_cls, signals: Container[str]) -> None:
+    def register(self, sig_cls, signals: Container[Hashable]) -> None:
         """
         :param sig_class: the class of an object that will be sending signals
         :type sig_class: class
@@ -82,7 +84,7 @@ class Signals:
     def connect(
         self,
         obj,
-        name: str,
+        name: Hashable,
         callback: Callable[..., typing.Any],
         user_arg: typing.Any = None,
         *,
@@ -168,6 +170,7 @@ class Signals:
             warnings.warn(
                 "Don't use user_arg argument, use user_args instead.",
                 DeprecationWarning,
+                stacklevel=2,
             )
 
         sig_cls = obj.__class__
@@ -191,6 +194,7 @@ class Signals:
         # object (via the weakrefs, which keep strong references to
         # their callbacks) from existing.
         obj_weak = weakref.ref(obj)
+
         def weakref_callback(weakref):
             o = obj_weak()
             if o:
@@ -215,7 +219,7 @@ class Signals:
     def disconnect(
         self,
         obj,
-        name: str,
+        name: Hashable,
         callback: Callable[..., typing.Any],
         user_arg: typing.Any = None,
         *,
@@ -242,7 +246,7 @@ class Signals:
         """
         signals = setdefaultattr(obj, self._signal_attr, {})
         if name not in signals:
-            return
+            return None
 
         handlers = signals[name]
 
@@ -254,8 +258,9 @@ class Signals:
         for h in handlers:
             if h[1:] == (callback, user_arg, user_args):
                 return self.disconnect_by_key(obj, name, h[0])
+        return None
 
-    def disconnect_by_key(self, obj, name: str, key: Key) -> None:
+    def disconnect_by_key(self, obj, name: Hashable, key: Key) -> None:
         """
         :param obj: the object to disconnect the signal from
         :type obj: object
@@ -276,7 +281,7 @@ class Signals:
         handlers = signals.get(name, [])
         handlers[:] = [h for h in handlers if h[0] is not key]
 
-    def emit(self, obj, name: str, *args) -> bool:
+    def emit(self, obj, name: Hashable, *args) -> bool:
         """
         :param obj: the object sending a signal
         :type obj: object
@@ -292,7 +297,7 @@ class Signals:
         result = False
         signals = getattr(obj, self._signal_attr, {})
         handlers = signals.get(name, [])
-        for key, callback, user_arg, (weak_args, user_args) in handlers:
+        for _key, callback, user_arg, (weak_args, user_args) in handlers:
             result |= self._call_callback(callback, user_arg, weak_args, user_args, args)
         return result
 

@@ -21,7 +21,7 @@
 
 from __future__ import annotations
 
-import contextlib
+from contextlib import suppress
 
 import urwid
 
@@ -58,7 +58,7 @@ def main():
     urwid.connect_signal(term, "title", set_title)
     urwid.connect_signal(term, "closed", execute_quit)
 
-    with contextlib.suppress(NameError):
+    with suppress(NameError):
         urwid.connect_signal(term, "resize", handle_resize)
         # if using a version of Urwid library where vterm doesn't support
         # resize, don't register the signal handler.

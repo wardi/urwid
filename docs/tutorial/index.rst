@@ -69,10 +69,10 @@ each key pressed, exiting when the user presses *Q*.
 Display Attributes
 ------------------
 
-.. image:: attr1.png
-.. image:: attr2.png
-.. image:: attr3.png
-.. image:: attr4.png
+.. image:: urwid_attr1.png
+.. image:: urwid_attr2.png
+.. image:: urwid_attr3.png
+.. image:: urwid_attr4.png
 
 This program displays the string ``Hello World`` in the center of the screen.
 It uses different attributes for the text, the space on either side of the text
@@ -81,7 +81,7 @@ and the space above and below the text. It waits for a keypress before exiting.
 The screenshots above show how these widgets react to being resized.
 
 
-.. literalinclude:: attr.py
+.. literalinclude:: urwid_attr.py
    :linenos:
 
 * Display attributes are defined as part of a palette. Valid foreground,

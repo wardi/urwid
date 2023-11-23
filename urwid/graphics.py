@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Urwid graphics widgets
 #    Copyright (C) 2004-2011  Ian Ward
 #

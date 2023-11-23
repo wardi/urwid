@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 
 import urwid
-from urwid.tests.util import SelectableText
+from tests.util import SelectableText
 
 
 class ListBoxCalculateVisibleTest(unittest.TestCase):

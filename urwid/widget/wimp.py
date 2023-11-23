@@ -213,6 +213,8 @@ class CheckBox(WidgetWrap):
                                 function call for a single callback
         :param user_data: user_data for on_state_change
 
+        ..note:: `pack` method expect, that `Columns` backend widget is not modified from outside
+
         Signals supported: ``'change'``, ``"postchange"``
 
         Register signal handler with::
@@ -259,6 +261,28 @@ class CheckBox(WidgetWrap):
                 focus_column=0,
             ),
         )
+
+    def pack(self, size: tuple[int] | None = None, focus: bool = False) -> tuple[str, str]:
+        """Pack for widget.
+
+        :param size: size data. Special case: None - get minimal widget size to fit
+        :param focus: widget is focused
+
+        >>> cb = CheckBox("test")
+        >>> cb.pack((10,))
+        (10, 1)
+        >>> cb.pack()
+        (8, 1)
+        >>> ml_cb = CheckBox("Multi\\nline\\ncheckbox")
+        >>> ml_cb.pack()
+        (12, 3)
+        """
+        if size is not None:
+            return super().pack(size, focus)
+
+        width, _height = self._label.pack()
+        width += self.reserve_columns
+        return width, self.rows((width,))
 
     def _repr_words(self) -> list[str]:
         return [*super()._repr_words(), repr(self.label)]
@@ -473,6 +497,8 @@ class RadioButton(CheckBox):
                                 function call for a single 'change' callback
         :param user_data: user_data for on_state_change
 
+        ..note:: `pack` method expect, that `Columns` backend widget is not modified from outside
+
         This function will append the new radio button to group.
         "first True" will set to True if group is empty.
 
@@ -628,6 +654,8 @@ class Button(WidgetWrap):
         :param layout: defaults to a shared :class:`StandardTextLayout` instance
         :type layout: text layout instance
 
+        ..note:: `pack` method expect, that `Columns` backend widget is not modified from outside
+
         Signals supported: ``'click'``
 
         Register signal handler with::
@@ -662,6 +690,25 @@ class Button(WidgetWrap):
         # in to the constructor.  Just convert it to the new way:
         if on_press:
             connect_signal(self, "click", on_press, user_data)
+
+    def pack(self, size: tuple[int] | None = None, focus: bool = False) -> tuple[int, int]:
+        """Pack for widget.
+
+        :param size: size data. Special case: None - get minimal widget size to fit
+        :param focus: widget is focused
+
+        >>> btn = Button("Some button")
+        >>> btn.pack((10,))
+        (10, 2)
+        >>> btn.pack()
+        (15, 1)
+        """
+        if size is not None:
+            return super().pack(size, focus)
+
+        width, _height = self._label.pack()
+        width += 4  # We use Given sizing for button ends and `dividechars=1`
+        return width, self.rows((width,))
 
     def _repr_words(self) -> list[str]:
         # include button.label in repr(button)

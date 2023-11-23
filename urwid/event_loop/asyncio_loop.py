@@ -50,7 +50,8 @@ class AsyncioEventLoop(EventLoop):
         running in background), and wish the screen to be
         redrawn, you must call :meth:`MainLoop.draw_screen` method of the
         main loop manually.
-        A good way to do this::
+
+        A good way to do this:
             asyncio.get_event_loop().call_soon(main_loop.draw_screen)
     """
 

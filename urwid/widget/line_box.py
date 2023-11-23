@@ -125,7 +125,7 @@ class LineBox(WidgetDecoration, WidgetWrap):
         WidgetWrap.__init__(self, pile)
 
     def format_title(self, text: str) -> str:
-        if len(text) > 0:
+        if text:
             return f" {text} "
 
         return ""

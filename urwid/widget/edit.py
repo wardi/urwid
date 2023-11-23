@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import string
 import typing
 
 from urwid import text_layout
@@ -39,7 +40,7 @@ class Edit(Text):
       event handler to get into a loop of changing the text and then being
       called when the event is re-emitted.  It is up to the event
       handler to guard against this case (for instance, by not changing the
-      text if it is signaled for for text that it has already changed once).
+      text if it is signaled for text that it has already changed once).
     """
 
     _selectable = True
@@ -106,8 +107,9 @@ class Edit(Text):
         self.multiline = multiline
         self.allow_tab = allow_tab
         self._edit_pos = 0
-        self.set_caption(caption)
+        self._caption, self._attrib = decompose_tagmarkup(caption)
         self._edit_text = ""
+        self.highlight = None
         self.set_edit_text(edit_text)
         if edit_pos is None:
             edit_pos = len(edit_text)
@@ -654,7 +656,7 @@ class IntEdit(Edit):
         """
         Return true for decimal digits.
         """
-        return len(ch) == 1 and ch in "0123456789"
+        return len(ch) == 1 and ch in string.digits
 
     def __init__(self, caption="", default: int | str | None = None) -> None:
         """

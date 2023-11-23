@@ -23,12 +23,11 @@ from __future__ import annotations
 
 from setuptools import Extension, setup
 
-
 setup_d = {
-    'name': "urwid",
-    'ext_modules': [Extension('urwid.str_util', sources=['source/str_util.c'])],
-    'url': "https://urwid.org/",
-    'test_suite': 'urwid.tests',
+    "name": "urwid",
+    "ext_modules": [Extension("urwid.str_util", sources=["source/str_util.c"])],
+    "url": "https://urwid.org/",
+    "test_suite": "urwid.tests",
 }
 
 if __name__ == "__main__":
@@ -36,9 +35,11 @@ if __name__ == "__main__":
         setup(**setup_d)
     except (OSError, SystemExit) as e:
         import sys
+
         if "test" in sys.argv:
             raise
         import traceback
+
         traceback.print_exc()
         print("Couldn't build the extension module, trying without it...")
         del setup_d["ext_modules"]

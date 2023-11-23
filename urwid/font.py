@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Urwid BigText fonts
 #    Copyright (C) 2004-2006  Ian Ward
 #
@@ -154,7 +152,7 @@ class FontRegistry(type):
         """List of (font name, font class) tuples."""
         return list(mcs.__registered.items())
 
-    def __new__(  # noqa: PYI034  # new can not return Self
+    def __new__(
         cls: type[FontRegistry],
         name: str,
         bases: tuple[type, ...],
@@ -690,6 +688,6 @@ if __name__ == "__main__":
         if font_chars == all_ascii:
             print("Full ASCII")
         elif font_chars & all_ascii == all_ascii:
-            print(f"Full ASCII + {''.join(font_chars^all_ascii)!r}")
+            print(f"Full ASCII + {''.join(font_chars ^ all_ascii)!r}")
         else:
             print(f"Characters: {chars!r}")

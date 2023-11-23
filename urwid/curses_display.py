@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Urwid curses output wrapper.. the horror..
 #    Copyright (C) 2004-2011  Ian Ward
 #
@@ -28,6 +26,7 @@ from __future__ import annotations
 
 import curses
 import typing
+from contextlib import suppress
 
 import _curses
 
@@ -41,23 +40,23 @@ KEY_RESIZE = 410  # curses.KEY_RESIZE (sometimes not defined)
 KEY_MOUSE = 409  # curses.KEY_MOUSE
 
 _curses_colours = {
-    'default':        (-1,                    0),
-    'black':          (curses.COLOR_BLACK,    0),
-    'dark red':       (curses.COLOR_RED,      0),
-    'dark green':     (curses.COLOR_GREEN,    0),
-    'brown':          (curses.COLOR_YELLOW,   0),
-    'dark blue':      (curses.COLOR_BLUE,     0),
-    'dark magenta':   (curses.COLOR_MAGENTA,  0),
-    'dark cyan':      (curses.COLOR_CYAN,     0),
-    'light gray':     (curses.COLOR_WHITE,    0),
-    'dark gray':      (curses.COLOR_BLACK,    1),
-    'light red':      (curses.COLOR_RED,      1),
-    'light green':    (curses.COLOR_GREEN,    1),
-    'yellow':         (curses.COLOR_YELLOW,   1),
-    'light blue':     (curses.COLOR_BLUE,     1),
-    'light magenta':  (curses.COLOR_MAGENTA,  1),
-    'light cyan':     (curses.COLOR_CYAN,     1),
-    'white':          (curses.COLOR_WHITE,    1),
+    "default": (-1, 0),
+    "black": (curses.COLOR_BLACK, 0),
+    "dark red": (curses.COLOR_RED, 0),
+    "dark green": (curses.COLOR_GREEN, 0),
+    "brown": (curses.COLOR_YELLOW, 0),
+    "dark blue": (curses.COLOR_BLUE, 0),
+    "dark magenta": (curses.COLOR_MAGENTA, 0),
+    "dark cyan": (curses.COLOR_CYAN, 0),
+    "light gray": (curses.COLOR_WHITE, 0),
+    "dark gray": (curses.COLOR_BLACK, 1),
+    "light red": (curses.COLOR_RED, 1),
+    "light green": (curses.COLOR_GREEN, 1),
+    "yellow": (curses.COLOR_YELLOW, 1),
+    "light blue": (curses.COLOR_BLUE, 1),
+    "light magenta": (curses.COLOR_MAGENTA, 1),
+    "light cyan": (curses.COLOR_CYAN, 1),
+    "white": (curses.COLOR_WHITE, 1),
 }
 
 
@@ -65,7 +64,7 @@ class Screen(BaseScreen, RealTerminal):
     def __init__(self):
         super().__init__()
         self.curses_pairs = [
-            (None,None), # Can't be sure what pair 0 will default to
+            (None, None),  # Can't be sure what pair 0 will default to
         ]
         self.palette = {}
         self.has_color = False
@@ -77,7 +76,7 @@ class Screen(BaseScreen, RealTerminal):
         self.last_bstate = 0
         self._mouse_tracking_enabled = False
 
-        self.register_palette_entry(None, 'default','default')
+        self.register_palette_entry(None, "default", "default")
 
     def set_mouse_tracking(self, enable: bool = True) -> None:
         """
@@ -91,17 +90,28 @@ class Screen(BaseScreen, RealTerminal):
             return
 
         if enable:
-            curses.mousemask(0
-                | curses.BUTTON1_PRESSED | curses.BUTTON1_RELEASED
-                | curses.BUTTON2_PRESSED | curses.BUTTON2_RELEASED
-                | curses.BUTTON3_PRESSED | curses.BUTTON3_RELEASED
-                | curses.BUTTON4_PRESSED | curses.BUTTON4_RELEASED
-                | curses.BUTTON1_DOUBLE_CLICKED | curses.BUTTON1_TRIPLE_CLICKED
-                | curses.BUTTON2_DOUBLE_CLICKED | curses.BUTTON2_TRIPLE_CLICKED
-                | curses.BUTTON3_DOUBLE_CLICKED | curses.BUTTON3_TRIPLE_CLICKED
-                | curses.BUTTON4_DOUBLE_CLICKED | curses.BUTTON4_TRIPLE_CLICKED
-                | curses.BUTTON_SHIFT | curses.BUTTON_ALT
-                | curses.BUTTON_CTRL)
+            curses.mousemask(
+                0
+                | curses.BUTTON1_PRESSED
+                | curses.BUTTON1_RELEASED
+                | curses.BUTTON2_PRESSED
+                | curses.BUTTON2_RELEASED
+                | curses.BUTTON3_PRESSED
+                | curses.BUTTON3_RELEASED
+                | curses.BUTTON4_PRESSED
+                | curses.BUTTON4_RELEASED
+                | curses.BUTTON1_DOUBLE_CLICKED
+                | curses.BUTTON1_TRIPLE_CLICKED
+                | curses.BUTTON2_DOUBLE_CLICKED
+                | curses.BUTTON2_TRIPLE_CLICKED
+                | curses.BUTTON3_DOUBLE_CLICKED
+                | curses.BUTTON3_TRIPLE_CLICKED
+                | curses.BUTTON4_DOUBLE_CLICKED
+                | curses.BUTTON4_TRIPLE_CLICKED
+                | curses.BUTTON_SHIFT
+                | curses.BUTTON_ALT
+                | curses.BUTTON_CTRL
+            )
         else:
             raise NotImplementedError()
 
@@ -121,13 +131,13 @@ class Screen(BaseScreen, RealTerminal):
         if self.has_color:
             try:
                 curses.use_default_colors()
-                self.has_default_colors=True
+                self.has_default_colors = True
             except _curses.error:
-                self.has_default_colors=False
+                self.has_default_colors = False
         self._setup_colour_pairs()
         curses.noecho()
         curses.meta(1)
-        curses.halfdelay(10) # use set_input_timeouts to adjust
+        curses.halfdelay(10)  # use set_input_timeouts to adjust
         self.s.keypad(0)
 
         if not self._signal_keys_set:
@@ -141,10 +151,9 @@ class Screen(BaseScreen, RealTerminal):
         """
         curses.echo()
         self._curs_set(1)
-        try:
+        with suppress(_curses.error):
             curses.endwin()
-        except _curses.error:
-            pass # don't block original error with curses error
+            # don't block original error with curses error
 
         if self._old_signal_keys:
             self.tty_signal_keys(*self._old_signal_keys)
@@ -164,14 +173,13 @@ class Screen(BaseScreen, RealTerminal):
         for fg in range(8):
             for bg in range(8):
                 # leave out white on black
-                if fg == curses.COLOR_WHITE and \
-                   bg == curses.COLOR_BLACK:
+                if fg == curses.COLOR_WHITE and bg == curses.COLOR_BLACK:
                     continue
 
                 curses.init_pair(bg * 8 + 7 - fg, fg, bg)
 
     def _curs_set(self, x):
-        if self.cursor_state == "fixed" or x == self.cursor_state:
+        if self.cursor_state in ("fixed", x):
             return
         try:
             curses.curs_set(x)
@@ -207,9 +215,9 @@ class Screen(BaseScreen, RealTerminal):
 
     def set_input_timeouts(
         self,
-        max_wait: int | float | None = None,
-        complete_wait: int | float = 0.1,
-        resize_wait: int | float = 0.1,
+        max_wait: float | None = None,
+        complete_wait: float = 0.1,
+        resize_wait: float = 0.1,
     ):
         """
         Set the get_input timeout values.  All values have a granularity
@@ -228,10 +236,10 @@ class Screen(BaseScreen, RealTerminal):
             window resize operation
         """
 
-        def convert_to_tenths( s ):
+        def convert_to_tenths(s):
             if s is None:
                 return None
-            return int( (s+0.05)*10 )
+            return int((s + 0.05) * 10)
 
         self.max_tenths = convert_to_tenths(max_wait)
         self.complete_tenths = convert_to_tenths(complete_wait)
@@ -286,26 +294,27 @@ class Screen(BaseScreen, RealTerminal):
         * Mouse button release: ('mouse release', 0, 18, 13),
                               ('ctrl mouse release', 0, 17, 23)
         """
-        assert self._started
+        if not self._started:
+            raise RuntimeError
 
         keys, raw = self._get_input(self.max_tenths)
 
         # Avoid pegging CPU at 100% when slowly resizing, and work
         # around a bug with some braindead curses implementations that
         # return "no key" between "window resize" commands
-        if keys == ['window resize'] and self.prev_input_resize:
+        if keys == ["window resize"] and self.prev_input_resize:
             while True:
                 keys, raw2 = self._get_input(self.resize_tenths)
                 raw += raw2
                 if not keys:
                     keys, raw2 = self._get_input(self.resize_tenths)
                     raw += raw2
-                if keys != ['window resize']:
+                if keys != ["window resize"]:
                     break
-            if keys[-1:] != ['window resize']:
-                keys.append('window resize')
+            if keys[-1:] != ["window resize"]:
+                keys.append("window resize")
 
-        if keys == ['window resize']:
+        if keys == ["window resize"]:
             self.prev_input_resize = 2
         elif self.prev_input_resize == 2 and not keys:
             self.prev_input_resize = 1
@@ -359,14 +368,14 @@ class Screen(BaseScreen, RealTerminal):
                 processed += run
 
         if resize:
-            processed.append('window resize')
+            processed.append("window resize")
 
         return processed, raw
 
     def _encode_mouse_event(self) -> list[int]:
         # convert to escape sequence
-        last = next = self.last_bstate
-        (id, x, y, z, bstate) = curses.getmouse()
+        last_state = next_state = self.last_bstate
+        (_id, x, y, z, bstate) = curses.getmouse()
 
         mod = 0
         if bstate & curses.BUTTON_SHIFT:
@@ -376,73 +385,73 @@ class Screen(BaseScreen, RealTerminal):
         if bstate & curses.BUTTON_CTRL:
             mod |= 16
 
-        l = []
+        result = []
 
         def append_button(b: int) -> None:
             b |= mod
-            l.extend([27, ord('['), ord('M'), b+32, x+33, y+33])
+            result.extend([27, ord("["), ord("M"), b + 32, x + 33, y + 33])
 
-        if bstate & curses.BUTTON1_PRESSED and last & 1 == 0:
-            append_button( 0 )
-            next |= 1
-        if bstate & curses.BUTTON2_PRESSED and last & 2 == 0:
-            append_button( 1 )
-            next |= 2
-        if bstate & curses.BUTTON3_PRESSED and last & 4 == 0:
-            append_button( 2 )
-            next |= 4
-        if bstate & curses.BUTTON4_PRESSED and last & 8 == 0:
-            append_button( 64 )
-            next |= 8
-        if bstate & curses.BUTTON1_RELEASED and last & 1:
-            append_button( 0 + escape.MOUSE_RELEASE_FLAG )
-            next &= ~ 1
-        if bstate & curses.BUTTON2_RELEASED and last & 2:
-            append_button( 1 + escape.MOUSE_RELEASE_FLAG )
-            next &= ~ 2
-        if bstate & curses.BUTTON3_RELEASED and last & 4:
-            append_button( 2 + escape.MOUSE_RELEASE_FLAG )
-            next &= ~ 4
-        if bstate & curses.BUTTON4_RELEASED and last & 8:
-            append_button( 64 + escape.MOUSE_RELEASE_FLAG )
-            next &= ~ 8
+        if bstate & curses.BUTTON1_PRESSED and last_state & 1 == 0:
+            append_button(0)
+            next_state |= 1
+        if bstate & curses.BUTTON2_PRESSED and last_state & 2 == 0:
+            append_button(1)
+            next_state |= 2
+        if bstate & curses.BUTTON3_PRESSED and last_state & 4 == 0:
+            append_button(2)
+            next_state |= 4
+        if bstate & curses.BUTTON4_PRESSED and last_state & 8 == 0:
+            append_button(64)
+            next_state |= 8
+        if bstate & curses.BUTTON1_RELEASED and last_state & 1:
+            append_button(0 + escape.MOUSE_RELEASE_FLAG)
+            next_state &= ~1
+        if bstate & curses.BUTTON2_RELEASED and last_state & 2:
+            append_button(1 + escape.MOUSE_RELEASE_FLAG)
+            next_state &= ~2
+        if bstate & curses.BUTTON3_RELEASED and last_state & 4:
+            append_button(2 + escape.MOUSE_RELEASE_FLAG)
+            next_state &= ~4
+        if bstate & curses.BUTTON4_RELEASED and last_state & 8:
+            append_button(64 + escape.MOUSE_RELEASE_FLAG)
+            next_state &= ~8
 
         if bstate & curses.BUTTON1_DOUBLE_CLICKED:
-            append_button( 0 + escape.MOUSE_MULTIPLE_CLICK_FLAG )
+            append_button(0 + escape.MOUSE_MULTIPLE_CLICK_FLAG)
         if bstate & curses.BUTTON2_DOUBLE_CLICKED:
-            append_button( 1 + escape.MOUSE_MULTIPLE_CLICK_FLAG )
+            append_button(1 + escape.MOUSE_MULTIPLE_CLICK_FLAG)
         if bstate & curses.BUTTON3_DOUBLE_CLICKED:
-            append_button( 2 + escape.MOUSE_MULTIPLE_CLICK_FLAG )
+            append_button(2 + escape.MOUSE_MULTIPLE_CLICK_FLAG)
         if bstate & curses.BUTTON4_DOUBLE_CLICKED:
-            append_button( 64 + escape.MOUSE_MULTIPLE_CLICK_FLAG )
+            append_button(64 + escape.MOUSE_MULTIPLE_CLICK_FLAG)
 
         if bstate & curses.BUTTON1_TRIPLE_CLICKED:
-            append_button( 0 + escape.MOUSE_MULTIPLE_CLICK_FLAG*2 )
+            append_button(0 + escape.MOUSE_MULTIPLE_CLICK_FLAG * 2)
         if bstate & curses.BUTTON2_TRIPLE_CLICKED:
-            append_button( 1 + escape.MOUSE_MULTIPLE_CLICK_FLAG*2 )
+            append_button(1 + escape.MOUSE_MULTIPLE_CLICK_FLAG * 2)
         if bstate & curses.BUTTON3_TRIPLE_CLICKED:
-            append_button( 2 + escape.MOUSE_MULTIPLE_CLICK_FLAG*2 )
+            append_button(2 + escape.MOUSE_MULTIPLE_CLICK_FLAG * 2)
         if bstate & curses.BUTTON4_TRIPLE_CLICKED:
-            append_button( 64 + escape.MOUSE_MULTIPLE_CLICK_FLAG*2 )
+            append_button(64 + escape.MOUSE_MULTIPLE_CLICK_FLAG * 2)
 
-        self.last_bstate = next
-        return l
+        self.last_bstate = next_state
+        return result
 
     def _dbg_instr(self):  # messy input string (intended for debugging)
         curses.echo()
         self.s.nodelay(0)
         curses.halfdelay(100)
-        str = self.s.getstr()
+        string = self.s.getstr()
         curses.noecho()
-        return str
+        return string
 
-    def _dbg_out(self, str) -> None:  # messy output function (intended for debugging)
+    def _dbg_out(self, string) -> None:  # messy output function (intended for debugging)
         self.s.clrtoeol()
-        self.s.addstr(str)
+        self.s.addstr(string)
         self.s.refresh()
         self._curs_set(1)
 
-    def _dbg_query(self,question):  # messy query (intended for debugging)
+    def _dbg_query(self, question):  # messy query (intended for debugging)
         self._dbg_out(question)
         return self._dbg_instr()
 
@@ -451,15 +460,15 @@ class Screen(BaseScreen, RealTerminal):
 
     def get_cols_rows(self) -> tuple[int, int]:
         """Return the terminal dimensions (num columns, num rows)."""
-        rows,cols = self.s.getmaxyx()
+        rows, cols = self.s.getmaxyx()
         return cols, rows
 
     def _setattr(self, a):
         if a is None:
             self.s.attrset(0)
             return
-        elif not isinstance(a, AttrSpec):
-            p = self._palette.get(a, (AttrSpec('default', 'default'),))
+        if not isinstance(a, AttrSpec):
+            p = self._palette.get(a, (AttrSpec("default", "default"),))
             a = p[0]
 
         if self.has_color:
@@ -493,17 +502,19 @@ class Screen(BaseScreen, RealTerminal):
 
     def draw_screen(self, size: tuple[int, int], r):
         """Paint screen with rendered canvas."""
-        assert self._started
+        if not self._started:
+            raise RuntimeError
 
         cols, rows = size
 
-        assert r.rows() == rows, "canvas size and passed size don't match"
+        if r.rows() != rows:
+            raise ValueError("canvas size and passed size don't match")
 
         y = -1
         for row in r.content():
             y += 1
             try:
-                self.s.move( y, 0 )
+                self.s.move(y, 0)
             except _curses.error:
                 # terminal shrunk?
                 # move failed so stop rendering.
@@ -513,9 +524,10 @@ class Screen(BaseScreen, RealTerminal):
             lasta = None
             nr = 0
             for a, cs, seg in row:
-                if cs != 'U':
-                    seg = seg.translate(UNPRINTABLE_TRANS_TABLE)
-                    assert isinstance(seg, bytes)
+                if cs != "U":
+                    seg = seg.translate(UNPRINTABLE_TRANS_TABLE)  # noqa: PLW2901
+                    if not isinstance(seg, bytes):
+                        raise TypeError(seg)
 
                 if first or lasta != a:
                     self._setattr(a)
@@ -525,29 +537,27 @@ class Screen(BaseScreen, RealTerminal):
                         for i in range(len(seg)):
                             self.s.addch(0x400000 + seg[i])
                     else:
-                        assert cs is None
-                        assert isinstance(seg, bytes)
-                        self.s.addstr(seg.decode('utf-8'))
+                        if cs is not None:
+                            raise ValueError(f"cs not in ('0', 'U' ,'None'): {cs!r}")
+                        if not isinstance(seg, bytes):
+                            raise TypeError(seg)
+                        self.s.addstr(seg.decode("utf-8"))
                 except _curses.error:
                     # it's ok to get out of the
                     # screen on the lower right
-                    if (y == rows-1 and nr == len(row)-1):
-                        pass
-                    else:
+                    if y != rows - 1 or nr != len(row) - 1:
                         # perhaps screen size changed
                         # quietly abort.
                         return
                 nr += 1
         if r.cursor is not None:
-            x,y = r.cursor
+            x, y = r.cursor
             self._curs_set(1)
-            try:
-                self.s.move(y,x)
-            except _curses.error:
-                pass
+            with suppress(_curses.error):
+                self.s.move(y, x)
         else:
             self._curs_set(0)
-            self.s.move(0,0)
+            self.s.move(0, 0)
 
         self.s.refresh()
         self.keep_cache_alive_link = r
@@ -566,19 +576,23 @@ class _test:
         self.l = sorted(_curses_colours)
 
         for c in self.l:
-            self.ui.register_palette( [
-                (f"{c} on black", c, 'black', 'underline'),
-                (f"{c} on dark blue",c, 'dark blue', 'bold'),
-                (f"{c} on light gray",c,'light gray', 'standout'),
-                ])
+            self.ui.register_palette(
+                [
+                    (f"{c} on black", c, "black", "underline"),
+                    (f"{c} on dark blue", c, "dark blue", "bold"),
+                    (f"{c} on light gray", c, "light gray", "standout"),
+                ]
+            )
 
         with self.ui.start():
             self.run()
 
     def run(self) -> None:
-        class FakeRender: pass
+        class FakeRender:
+            pass
+
         r = FakeRender()
-        text = [f"  has_color = {self.ui.has_color!r}",""]
+        text = [f"  has_color = {self.ui.has_color!r}", ""]
         attr = [[], []]
         r.coords = {}
         r.cursor = None
@@ -587,22 +601,21 @@ class _test:
             t = ""
             a = []
             for p in f"{c} on black", f"{c} on dark blue", f"{c} on light gray":
-
                 a.append((p, 27))
                 t += (p + 27 * " ")[:27]
-            text.append( t )
-            attr.append( a )
+            text.append(t)
+            attr.append(a)
 
-        text += ["","return values from get_input(): (q exits)", ""]
-        attr += [[],[],[]]
-        cols,rows = self.ui.get_cols_rows()
+        text += ["", "return values from get_input(): (q exits)", ""]
+        attr += [[], [], []]
+        cols, rows = self.ui.get_cols_rows()
         keys = None
-        while keys != ['q']:
+        while keys != ["q"]:
             r.text = ([t.ljust(cols) for t in text] + [""] * rows)[:rows]
             r.attr = (attr + [[] for _ in range(rows)])[:rows]
             self.ui.draw_screen((cols, rows), r)
-            keys, raw = self.ui.get_input( raw_keys = True )
-            if 'window resize' in keys:
+            keys, raw = self.ui.get_input(raw_keys=True)
+            if "window resize" in keys:
                 cols, rows = self.ui.get_cols_rows()
             if not keys:
                 continue
@@ -610,10 +623,10 @@ class _test:
             a = []
             for k in keys:
                 if isinstance(k, str):
-                    k = k.encode("utf-8")
+                    k = k.encode("utf-8")  # noqa: PLW2901
 
                 t += f"'{k}' "
-                a += [(None, 1), ('yellow on dark blue', len(k)), (None, 2)]
+                a += [(None, 1), ("yellow on dark blue", len(k)), (None, 2)]
 
             text.append(f"{t}: {raw!r}")
             attr.append(a)
@@ -621,5 +634,5 @@ class _test:
             attr = attr[-rows:]
 
 
-if '__main__' == __name__:
+if __name__ == "__main__":
     _test()

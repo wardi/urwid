@@ -621,7 +621,7 @@ class Columns(Widget, WidgetContainerMixin, WidgetContainerListContentsMixin):
         if coords is None:
             return None
         x, y = coords
-        x += sum([self.dividechars + wc for wc in widths[: self.focus_position] if wc > 0])
+        x += sum(self.dividechars + wc for wc in widths[: self.focus_position] if wc > 0)
         return x, y
 
     def move_cursor_to_coords(self, size: tuple[int] | tuple[int, int], col: int, row: int) -> bool:

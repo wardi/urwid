@@ -1,0 +1,52 @@
+name: Documentation
+
+on:
+  push:
+    branches-ignore:
+      - 'dependabot/**'
+      - 'gh-pages'
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"  # Canonical versioned tags
+      - "[0-9]+.[0-9]+.[0-9]+.post[0-9]+"  # Canonical rebuild tags
+  pull_request:
+    branches-ignore:
+      - 'dependabot/**'
+      - 'gh-pages'
+    paths:
+      - "docs/**"
+      - "README.rst"
+      - "urwid/**"
+      - "setup.py"
+      - "pyproject.toml"
+      - ".github/workflows/documentation.yml"
+
+jobs:
+  Build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need for setuptools_scm
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+      - name: Install Ubuntu dependencies
+        run: |
+          sudo apt-get -qq update
+          sudo apt-get install -y python3-gi gobject-introspection libgirepository1.0-dev
+      - name: Install python dependencies
+        run: |
+          pip install -U -r test_requirements.txt PyGObject
+          pip install -U sphinx sphinx-github-changelog
+      - name: Install main package
+        run: pip install -e .
+      - name: Build documentation
+        env:
+          SPHINX_GITHUB_CHANGELOG_TOKEN: ${{ secrets.URWID_SPHINX_RO_TOKEN }}
+        run: sphinx-build docs build/documentation
+      - uses: actions/upload-artifact@v3
+        with:
+          path: build/documentation
+          name: documentation

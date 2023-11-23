@@ -113,7 +113,7 @@ class BigTextDisplay:
         chosen_font_rb.base_widget.set_state(True)  # causes set_font_event call
 
         # Create Edit widget
-        edit = self.create_edit("", f"Urwid {urwid.__version__}", self.edit_change_event)
+        edit = self.create_edit("", "Urwid BigText example", self.edit_change_event)
 
         # ListBox
         chars = urwid.Pile([cah, ca])

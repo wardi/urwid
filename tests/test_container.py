@@ -4,7 +4,7 @@ import unittest
 from unittest import mock
 
 import urwid
-from urwid.tests.util import SelectableText
+from tests.util import SelectableText
 
 
 class FrameTest(unittest.TestCase):

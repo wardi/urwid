@@ -26,7 +26,16 @@ import os
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.todo', 'sphinx.ext.coverage']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.todo',
+    'sphinx.ext.coverage',
+    'sphinx.ext.githubpages',
+    "sphinx_github_changelog",
+]
+
+sphinx_github_changelog_token = os.environ.get("SPHINX_GITHUB_CHANGELOG_TOKEN")
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['tools/templates']
@@ -98,10 +107,13 @@ pygments_style = 'sphinx'
 
 # -- Options for HTML output ---------------------------------------------------
 
+# Generate CNAME
+html_baseurl = "https://urwid.org"
+
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 html_theme = 'default'
-html_style = None # make readthedocs really use the default theme
+html_style = None  # make readthedocs really use the default theme
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -116,7 +128,7 @@ html_theme_options = {
     'visitedlinkcolor':'#263193',
     'headtextcolor':'#181035',
     'headlinkcolor':'#181035',
-    'collapsiblesidebar': True,
+    'collapsiblesidebar': False,
 }
 
 # Add any paths that contain custom themes here, relative to this directory.

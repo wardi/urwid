@@ -28,6 +28,7 @@ import heapq
 import select
 import time
 import typing
+from contextlib import suppress
 from itertools import count
 
 from .abstract_loop import EventLoop, ExitMainLoop
@@ -145,14 +146,11 @@ class SelectEventLoop(EventLoop):
         Start the event loop.  Exit the loop when any callback raises
         an exception.  If ExitMainLoop is raised, exit cleanly.
         """
-        try:
+        with contextlib.suppress(ExitMainLoop):
             self._did_something = True
             while True:
-                with contextlib.suppress(InterruptedError):
+                with suppress(InterruptedError):
                     self._loop()
-
-        except ExitMainLoop:
-            pass
 
     def _loop(self) -> None:
         """

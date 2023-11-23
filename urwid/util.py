@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Urwid utility functions
 #    Copyright (C) 2004-2011  Ian Ward
 #
@@ -23,8 +21,10 @@
 from __future__ import annotations
 
 import codecs
+import contextlib
 import typing
 import warnings
+from contextlib import suppress
 
 from urwid import escape
 
@@ -56,46 +56,55 @@ def detect_encoding() -> str:
     # Use actual `getpreferredencoding` with public API only
     old_loc = locale.setlocale(locale.LC_CTYPE)  # == getlocale, but not mangle data
     try:
-        try:
+        with suppress(locale.Error):
             locale.setlocale(locale.LC_CTYPE, "")
-        except locale.Error:
-            pass
         # internally call private `_get_locale_encoding`
         return locale.getpreferredencoding(False)
     finally:
-        try:
+        with suppress(locale.Error):
             locale.setlocale(locale.LC_CTYPE, old_loc)
-        except locale.Error:
-            pass
 
 
-if 'detected_encoding' not in locals():
+if "detected_encoding" not in locals():
     detected_encoding = detect_encoding()
 else:
-    assert 0, "It worked!"
+    raise RuntimeError("Encoding detection broken")
 
-_target_encoding = 'ascii'
+_target_encoding = "ascii"
 _use_dec_special = True
 
 
-def set_encoding( encoding ):
+def set_encoding(encoding):
     """
     Set the byte encoding to assume when processing strings and the
     encoding to use when converting unicode strings.
     """
     encoding = encoding.lower()
 
-    global _target_encoding, _use_dec_special
+    global _target_encoding, _use_dec_special  # noqa: PLW0603
 
-    if encoding in ( 'utf-8', 'utf8', 'utf' ):
+    if encoding in ("utf-8", "utf8", "utf"):
         str_util.set_byte_encoding("utf8")
 
         _use_dec_special = False
-    elif encoding in ( 'euc-jp' # JISX 0208 only
-            , 'euc-kr', 'euc-cn', 'euc-tw' # CNS 11643 plain 1 only
-            , 'gb2312', 'gbk', 'big5', 'cn-gb', 'uhc'
-            # these shouldn't happen, should they?
-            , 'eucjp', 'euckr', 'euccn', 'euctw', 'cncb' ):
+    elif encoding in (
+        "euc-jp",  # JISX 0208 only
+        "euc-kr",
+        "euc-cn",
+        "euc-tw",  # CNS 11643 plain 1 only
+        "gb2312",
+        "gbk",
+        "big5",
+        "cn-gb",
+        "uhc"
+        # these shouldn't happen, should they?
+        ,
+        "eucjp",
+        "euckr",
+        "euccn",
+        "euctw",
+        "cncb",
+    ):
         str_util.set_byte_encoding("wide")
 
         _use_dec_special = True
@@ -104,12 +113,11 @@ def set_encoding( encoding ):
         _use_dec_special = True
 
     # if encoding is valid for conversion from unicode, remember it
-    _target_encoding = 'ascii'
-    try:
+    _target_encoding = "ascii"
+    with contextlib.suppress(LookupError):
         if encoding:
             "".encode(encoding)
             _target_encoding = encoding
-    except LookupError: pass
 
 
 def get_encoding_mode():
@@ -130,39 +138,45 @@ def apply_target_encoding(s: str | bytes):
         s = s.translate(escape.DEC_SPECIAL_CHARMAP)
 
     if isinstance(s, str):
-        s = s.replace(escape.SI+escape.SO, "") # remove redundant shifts
-        s = codecs.encode(s, _target_encoding, 'replace')
+        s = s.replace(escape.SI + escape.SO, "")  # remove redundant shifts
+        s = codecs.encode(s, _target_encoding, "replace")
 
-    assert isinstance(s, bytes)
-    SO = escape.SO.encode('ascii')
-    SI = escape.SI.encode('ascii')
+    if not isinstance(s, bytes):
+        raise TypeError(s)
+    SO = escape.SO.encode("ascii")
+    SI = escape.SI.encode("ascii")
 
     sis = s.split(SO)
 
-    assert isinstance(sis[0], bytes)
+    if not isinstance(sis[0], bytes):
+        raise TypeError(sis[0])
 
-    sis0 = sis[0].replace(SI, b'')
+    sis0 = sis[0].replace(SI, b"")
     sout = []
     cout = []
     if sis0:
-        sout.append( sis0 )
-        cout.append( (None,len(sis0)) )
+        sout.append(sis0)
+        cout.append((None, len(sis0)))
 
-    if len(sis)==1:
+    if len(sis) == 1:
         return sis0, cout
 
     for sn in sis[1:]:
-        assert isinstance(sn, bytes)
-        assert isinstance(SI, bytes)
+        if not isinstance(sn, bytes):
+            raise TypeError(sn)
+        if not isinstance(SI, bytes):
+            raise TypeError(SI)
+
         sl = sn.split(SI, 1)
         if len(sl) == 1:
             sin = sl[0]
-            assert isinstance(sin, bytes)
+            if not isinstance(sin, bytes):
+                raise TypeError(sin)
             sout.append(sin)
             rle_append_modify(cout, (escape.DEC_TAG, len(sin)))
             continue
         sin, son = sl
-        son = son.replace(SI, b'')
+        son = son.replace(SI, b"")
         if sin:
             sout.append(sin)
             rle_append_modify(cout, (escape.DEC_TAG, len(sin)))
@@ -170,13 +184,13 @@ def apply_target_encoding(s: str | bytes):
             sout.append(son)
             rle_append_modify(cout, (None, len(son)))
 
-    outstr = b''.join(sout)
+    outstr = b"".join(sout)
     return outstr, cout
 
 
 ######################################################################
 # Try to set the encoding using the one detected by the locale module
-set_encoding( detected_encoding )
+set_encoding(detected_encoding)
 ######################################################################
 
 
@@ -185,10 +199,10 @@ def supports_unicode():
     Return True if python is able to convert non-ascii unicode strings
     to the current encoding.
     """
-    return _target_encoding and _target_encoding != 'ascii'
+    return _target_encoding and _target_encoding != "ascii"
 
 
-def calc_trim_text( text, start_offs: int, end_offs: int, start_col: int, end_col: int):
+def calc_trim_text(text, start_offs: int, end_offs: int, start_col: int, end_col: int):
     """
     Calculate the result of trimming text.
     start_offs -- offset into text to treat as screen column 0
@@ -205,36 +219,34 @@ def calc_trim_text( text, start_offs: int, end_offs: int, start_col: int, end_co
     spos = start_offs
     pad_left = pad_right = 0
     if start_col > 0:
-        spos, sc = calc_text_pos( text, spos, end_offs, start_col )
+        spos, sc = calc_text_pos(text, spos, end_offs, start_col)
         if sc < start_col:
             pad_left = 1
-            spos, sc = calc_text_pos( text, start_offs,
-                end_offs, start_col+1 )
+            spos, sc = calc_text_pos(text, start_offs, end_offs, start_col + 1)
     run = end_col - start_col - pad_left
-    pos, sc = calc_text_pos( text, spos, end_offs, run )
+    pos, sc = calc_text_pos(text, spos, end_offs, run)
     if sc < run:
         pad_right = 1
-    return ( spos, pos, pad_left, pad_right )
+    return (spos, pos, pad_left, pad_right)
 
 
 def trim_text_attr_cs(text, attr, cs, start_col: int, end_col: int):
     """
     Return ( trimmed text, trimmed attr, trimmed cs ).
     """
-    spos, epos, pad_left, pad_right = calc_trim_text(text, 0, len(text), start_col, end_col )
-    attrtr = rle_subseg( attr, spos, epos )
-    cstr = rle_subseg( cs, spos, epos )
+    spos, epos, pad_left, pad_right = calc_trim_text(text, 0, len(text), start_col, end_col)
+    attrtr = rle_subseg(attr, spos, epos)
+    cstr = rle_subseg(cs, spos, epos)
     if pad_left:
-        al = rle_get_at( attr, spos-1 )
-        rle_prepend_modify( attrtr, (al, 1) )
-        rle_prepend_modify( cstr, (None, 1) )
+        al = rle_get_at(attr, spos - 1)
+        rle_prepend_modify(attrtr, (al, 1))
+        rle_prepend_modify(cstr, (None, 1))
     if pad_right:
-        al = rle_get_at( attr, epos )
-        rle_append_modify( attrtr, (al, 1) )
-        rle_append_modify( cstr, (None, 1) )
+        al = rle_get_at(attr, epos)
+        rle_append_modify(attrtr, (al, 1))
+        rle_append_modify(cstr, (None, 1))
 
-    return (b''.rjust(pad_left) + text[spos:epos] +
-        b''.rjust(pad_right), attrtr, cstr)
+    return (b"".rjust(pad_left) + text[spos:epos] + b"".rjust(pad_right), attrtr, cstr)
 
 
 def rle_get_at(rle, pos: int):
@@ -245,15 +257,15 @@ def rle_get_at(rle, pos: int):
     if pos < 0:
         return None
     for a, run in rle:
-        if x+run > pos:
+        if x + run > pos:
             return a
         x += run
     return None
 
 
 def rle_subseg(rle, start: int, end: int):
-    """Return a sub segment of an rle list."""
-    l = []
+    """Return a sub segment of a rle list."""
+    sub_segment = []
     x = 0
     for a, run in rle:
         if start:
@@ -262,15 +274,15 @@ def rle_subseg(rle, start: int, end: int):
                 x += run
                 continue
             x += start
-            run -= start
+            run -= start  # noqa: PLW2901
             start = 0
         if x >= end:
             break
-        if x+run > end:
-            run = end-x
+        if x + run > end:
+            run = end - x  # noqa: PLW2901
         x += run
-        l.append( (a, run) )
-    return l
+        sub_segment.append((a, run))
+    return sub_segment
 
 
 def rle_len(rle) -> int:
@@ -281,7 +293,8 @@ def rle_len(rle) -> int:
 
     run = 0
     for v in rle:
-        assert isinstance(v, tuple), repr(rle)
+        if not isinstance(v, tuple):
+            raise TypeError(rle)
         a, r = v
         run += r
     return run
@@ -300,7 +313,7 @@ def rle_prepend_modify(rle, a_r) -> None:
     else:
         al, run = rle[0]
         if a == al:
-            rle[0] = (a,run+r)
+            rle[0] = (a, run + r)
         else:
             rle[0:0] = [(a, r)]
 
@@ -314,13 +327,13 @@ def rle_append_modify(rle, a_r):
     """
     a, r = a_r
     if not rle or rle[-1][0] != a:
-        rle.append( (a,r) )
+        rle.append((a, r))
         return
-    la,lr = rle[-1]
-    rle[-1] = (a, lr+r)
+    la, lr = rle[-1]
+    rle[-1] = (a, lr + r)
 
 
-def rle_join_modify( rle, rle2 ):
+def rle_join_modify(rle, rle2):
     """
     Append attribute list rle2 to rle.
     Merge last run of rle with first run of rle2 when possible.
@@ -333,7 +346,7 @@ def rle_join_modify( rle, rle2 ):
     rle += rle2[1:]
 
 
-def rle_product( rle1, rle2 ):
+def rle_product(rle1, rle2):
     """
     Merge the runs of rle1 and rle2 like this:
     eg.
@@ -343,39 +356,41 @@ def rle_product( rle1, rle2 ):
 
     rle1 and rle2 are assumed to cover the same total run.
     """
-    i1 = i2 = 1 # rle1, rle2 indexes
-    if not rle1 or not rle2: return []
+    i1 = i2 = 1  # rle1, rle2 indexes
+    if not rle1 or not rle2:
+        return []
     a1, r1 = rle1[0]
     a2, r2 = rle2[0]
 
-    l = []
+    result = []
     while r1 and r2:
         r = min(r1, r2)
-        rle_append_modify( l, ((a1,a2),r) )
+        rle_append_modify(result, ((a1, a2), r))
         r1 -= r
-        if r1 == 0 and i1< len(rle1):
+        if r1 == 0 and i1 < len(rle1):
             a1, r1 = rle1[i1]
             i1 += 1
         r2 -= r
-        if r2 == 0 and i2< len(rle2):
+        if r2 == 0 and i2 < len(rle2):
             a2, r2 = rle2[i2]
             i2 += 1
-    return l
+    return result
 
 
-def rle_factor( rle ):
+def rle_factor(rle):
     """
     Inverse of rle_product.
     """
     rle1 = []
     rle2 = []
     for (a1, a2), r in rle:
-        rle_append_modify( rle1, (a1, r) )
-        rle_append_modify( rle2, (a2, r) )
+        rle_append_modify(rle1, (a1, r))
+        rle_append_modify(rle2, (a2, r))
     return rle1, rle2
 
 
-class TagMarkupException(Exception): pass
+class TagMarkupException(Exception):
+    pass
 
 
 def decompose_tagmarkup(tm):
@@ -423,7 +438,7 @@ def _tagmarkup_recurse(tm, attr):
             raise TagMarkupException(f"Tuples must be in the form (attribute, tagmarkup): {tm!r}")
 
         attr, element = tm
-        return _tagmarkup_recurse( element, attr )
+        return _tagmarkup_recurse(element, attr)
 
     if not isinstance(tm, (str, bytes)):
         raise TagMarkupException(f"Invalid markup element: {tm!r}")
@@ -442,6 +457,7 @@ def is_mouse_press(ev: str) -> bool:
 
 class MetaSuper(type):
     """adding .__super"""
+
     def __init__(cls, name: str, bases, d):
         super().__init__(name, bases, d)
         if hasattr(cls, f"_{name}__super"):
@@ -456,6 +472,7 @@ class MetaSuper(type):
                 stacklevel=3,
             )
             return super(cls, self)
+
         setattr(cls, f"_{name}__super", _super)
 
 
@@ -474,8 +491,8 @@ def int_scale(val: int, val_range: int, out_range: int):
     >>> int_scale(1, 3, 4)
     2
     """
-    num = int(val * (out_range-1) * 2 + (val_range-1))
-    dem = ((val_range-1) * 2)
+    num = int(val * (out_range - 1) * 2 + (val_range - 1))
+    dem = (val_range - 1) * 2
     # if num % dem == 0 then we are exactly half-way and have rounded up.
     return num // dem
 
@@ -485,6 +502,7 @@ class StoppingContext:
     make the ``start`` method on `MainLoop` and `BaseScreen` optionally act as
     context managers.
     """
+
     def __init__(self, wrapped):
         self._wrapped = wrapped
 

@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # Urwid common display code
 #    Copyright (C) 2004-2011  Ian Ward
 #
@@ -25,17 +24,18 @@ import os
 import sys
 import typing
 import warnings
-from collections.abc import Iterable, Sequence
 
-try:
+try:  # noqa: SIM105
     import termios
 except ImportError:
-    pass # windows
+    pass  # windows
 
 from urwid import signals
 from urwid.util import StoppingContext, int_scale
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     from typing_extensions import Literal, Self
 
 # for replacing unprintable bytes with '?'
@@ -52,40 +52,82 @@ _BASIC_START = 0  # first index of basic color aliases
 _CUBE_START = 16  # first index of color cube
 _CUBE_SIZE_256 = 6  # one side of the color cube
 _GRAY_SIZE_256 = 24
-_GRAY_START_256 = _CUBE_SIZE_256 ** 3 + _CUBE_START
+_GRAY_START_256 = _CUBE_SIZE_256**3 + _CUBE_START
 _CUBE_WHITE_256 = _GRAY_START_256 - 1
 _CUBE_SIZE_88 = 4
 _GRAY_SIZE_88 = 8
-_GRAY_START_88 = _CUBE_SIZE_88 ** 3 + _CUBE_START
+_GRAY_START_88 = _CUBE_SIZE_88**3 + _CUBE_START
 _CUBE_WHITE_88 = _GRAY_START_88 - 1
 _CUBE_BLACK = _CUBE_START
 
 # values copied from xterm 256colres.h:
-_CUBE_STEPS_256 = [0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff]
-_GRAY_STEPS_256 = [0x08, 0x12, 0x1c, 0x26, 0x30, 0x3a, 0x44, 0x4e, 0x58, 0x62,
-    0x6c, 0x76, 0x80, 0x84, 0x94, 0x9e, 0xa8, 0xb2, 0xbc, 0xc6, 0xd0,
-    0xda, 0xe4, 0xee]
+_CUBE_STEPS_256 = [0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF]
+_GRAY_STEPS_256 = [
+    0x08,
+    0x12,
+    0x1C,
+    0x26,
+    0x30,
+    0x3A,
+    0x44,
+    0x4E,
+    0x58,
+    0x62,
+    0x6C,
+    0x76,
+    0x80,
+    0x84,
+    0x94,
+    0x9E,
+    0xA8,
+    0xB2,
+    0xBC,
+    0xC6,
+    0xD0,
+    0xDA,
+    0xE4,
+    0xEE,
+]
 # values copied from xterm 88colres.h:
-_CUBE_STEPS_88 = [0x00, 0x8b, 0xcd, 0xff]
-_GRAY_STEPS_88 = [0x2e, 0x5c, 0x73, 0x8b, 0xa2, 0xb9, 0xd0, 0xe7]
+_CUBE_STEPS_88 = [0x00, 0x8B, 0xCD, 0xFF]
+_GRAY_STEPS_88 = [0x2E, 0x5C, 0x73, 0x8B, 0xA2, 0xB9, 0xD0, 0xE7]
 # values copied from X11/rgb.txt and XTerm-col.ad:
-_BASIC_COLOR_VALUES = [(0,0,0), (205, 0, 0), (0, 205, 0), (205, 205, 0),
-    (0, 0, 238), (205, 0, 205), (0, 205, 205), (229, 229, 229),
-    (127, 127, 127), (255, 0, 0), (0, 255, 0), (255, 255, 0),
-    (0x5c, 0x5c, 0xff), (255, 0, 255), (0, 255, 255), (255, 255, 255)]
+_BASIC_COLOR_VALUES = [
+    (0, 0, 0),
+    (205, 0, 0),
+    (0, 205, 0),
+    (205, 205, 0),
+    (0, 0, 238),
+    (205, 0, 205),
+    (0, 205, 205),
+    (229, 229, 229),
+    (127, 127, 127),
+    (255, 0, 0),
+    (0, 255, 0),
+    (255, 255, 0),
+    (0x5C, 0x5C, 0xFF),
+    (255, 0, 255),
+    (0, 255, 255),
+    (255, 255, 255),
+]
 
-_COLOR_VALUES_256 = (_BASIC_COLOR_VALUES +
-    [(r, g, b) for r in _CUBE_STEPS_256 for g in _CUBE_STEPS_256
-    for b in _CUBE_STEPS_256] +
-    [(gr, gr, gr) for gr in _GRAY_STEPS_256])
-_COLOR_VALUES_88 = (_BASIC_COLOR_VALUES +
-    [(r, g, b) for r in _CUBE_STEPS_88 for g in _CUBE_STEPS_88
-    for b in _CUBE_STEPS_88] +
-    [(gr, gr, gr) for gr in _GRAY_STEPS_88])
+_COLOR_VALUES_256 = (
+    _BASIC_COLOR_VALUES
+    + [(r, g, b) for r in _CUBE_STEPS_256 for g in _CUBE_STEPS_256 for b in _CUBE_STEPS_256]
+    + [(gr, gr, gr) for gr in _GRAY_STEPS_256]
+)
+_COLOR_VALUES_88 = (
+    _BASIC_COLOR_VALUES
+    + [(r, g, b) for r in _CUBE_STEPS_88 for g in _CUBE_STEPS_88 for b in _CUBE_STEPS_88]
+    + [(gr, gr, gr) for gr in _GRAY_STEPS_88]
+)
 
-assert len(_COLOR_VALUES_256) == 256
-assert len(_COLOR_VALUES_88) == 88
+if len(_COLOR_VALUES_256) != 256:
+    raise RuntimeError(_COLOR_VALUES_256)
+if len(_COLOR_VALUES_88) != 88:
+    raise RuntimeError(_COLOR_VALUES_88)
 
+# fmt: off
 _FG_COLOR_MASK =      0x000000ffffff
 _BG_COLOR_MASK =      0xffffff000000
 _FG_BASIC_COLOR =    0x1000000000000
@@ -103,27 +145,38 @@ _BOLD =            0x400000000000000
 _BLINK =           0x800000000000000
 _ITALICS =        0x1000000000000000
 _STRIKETHROUGH =  0x2000000000000000
-_FG_MASK = (_FG_COLOR_MASK | _FG_BASIC_COLOR | _FG_HIGH_COLOR |
-    _STANDOUT | _UNDERLINE | _BLINK | _BOLD | _ITALICS | _STRIKETHROUGH)
+# fmt: on
+
+_FG_MASK = (
+    _FG_COLOR_MASK
+    | _FG_BASIC_COLOR
+    | _FG_HIGH_COLOR
+    | _STANDOUT
+    | _UNDERLINE
+    | _BLINK
+    | _BOLD
+    | _ITALICS
+    | _STRIKETHROUGH
+)
 _BG_MASK = _BG_COLOR_MASK | _BG_BASIC_COLOR | _BG_HIGH_COLOR
 
-DEFAULT = 'default'
-BLACK = 'black'
-DARK_RED = 'dark red'
-DARK_GREEN = 'dark green'
-BROWN = 'brown'
-DARK_BLUE = 'dark blue'
-DARK_MAGENTA = 'dark magenta'
-DARK_CYAN = 'dark cyan'
-LIGHT_GRAY = 'light gray'
-DARK_GRAY = 'dark gray'
-LIGHT_RED = 'light red'
-LIGHT_GREEN = 'light green'
-YELLOW = 'yellow'
-LIGHT_BLUE = 'light blue'
-LIGHT_MAGENTA = 'light magenta'
-LIGHT_CYAN = 'light cyan'
-WHITE = 'white'
+DEFAULT = "default"
+BLACK = "black"
+DARK_RED = "dark red"
+DARK_GREEN = "dark green"
+BROWN = "brown"
+DARK_BLUE = "dark blue"
+DARK_MAGENTA = "dark magenta"
+DARK_CYAN = "dark cyan"
+LIGHT_GRAY = "light gray"
+DARK_GRAY = "dark gray"
+LIGHT_RED = "light red"
+LIGHT_GREEN = "light green"
+YELLOW = "yellow"
+LIGHT_BLUE = "light blue"
+LIGHT_MAGENTA = "light magenta"
+LIGHT_CYAN = "light cyan"
+WHITE = "white"
 
 _BASIC_COLORS = [
     BLACK,
@@ -145,12 +198,12 @@ _BASIC_COLORS = [
 ]
 
 _ATTRIBUTES = {
-    'bold': _BOLD,
-    'italics': _ITALICS,
-    'underline': _UNDERLINE,
-    'blink': _BLINK,
-    'standout': _STANDOUT,
-    'strikethrough': _STRIKETHROUGH,
+    "bold": _BOLD,
+    "italics": _ITALICS,
+    "underline": _UNDERLINE,
+    "blink": _BLINK,
+    "standout": _STANDOUT,
+    "strikethrough": _STRIKETHROUGH,
 }
 
 
@@ -166,19 +219,18 @@ def _value_lookup_table(values: Sequence[int], size: int) -> list[int]:
     [0, 0, 0, 0, 1, 1, 1, 1, 2, 2]
     """
 
-    middle_values = [0] + [(values[i] + values[i + 1] + 1) // 2
-        for i in range(len(values) - 1)] + [size]
+    middle_values = [0] + [(values[i] + values[i + 1] + 1) // 2 for i in range(len(values) - 1)] + [size]
     lookup_table = []
-    for i in range(len(middle_values)-1):
+    for i in range(len(middle_values) - 1):
         count = middle_values[i + 1] - middle_values[i]
         lookup_table.extend([i] * count)
     return lookup_table
 
 
 _CUBE_256_LOOKUP = _value_lookup_table(_CUBE_STEPS_256, 256)
-_GRAY_256_LOOKUP = _value_lookup_table([0] + _GRAY_STEPS_256 + [0xff], 256)
+_GRAY_256_LOOKUP = _value_lookup_table([0, *_GRAY_STEPS_256, 255], 256)
 _CUBE_88_LOOKUP = _value_lookup_table(_CUBE_STEPS_88, 256)
-_GRAY_88_LOOKUP = _value_lookup_table([0] + _GRAY_STEPS_88 + [0xff], 256)
+_GRAY_88_LOOKUP = _value_lookup_table([0, *_GRAY_STEPS_88, 255], 256)
 
 # convert steps to values that will be used by string versions of the colors
 # 1 hex digit for rgb and 0..100 for grayscale
@@ -188,14 +240,10 @@ _CUBE_STEPS_88_16 = [int_scale(n, 0x100, 0x10) for n in _CUBE_STEPS_88]
 _GRAY_STEPS_88_101 = [int_scale(n, 0x100, 101) for n in _GRAY_STEPS_88]
 
 # create lookup tables for 1 hex digit rgb and 0..100 for grayscale values
-_CUBE_256_LOOKUP_16 = [_CUBE_256_LOOKUP[int_scale(n, 16, 0x100)]
-    for n in range(16)]
-_GRAY_256_LOOKUP_101 = [_GRAY_256_LOOKUP[int_scale(n, 101, 0x100)]
-    for n in range(101)]
-_CUBE_88_LOOKUP_16 = [_CUBE_88_LOOKUP[int_scale(n, 16, 0x100)]
-    for n in range(16)]
-_GRAY_88_LOOKUP_101 = [_GRAY_88_LOOKUP[int_scale(n, 101, 0x100)]
-    for n in range(101)]
+_CUBE_256_LOOKUP_16 = [_CUBE_256_LOOKUP[int_scale(n, 16, 0x100)] for n in range(16)]
+_GRAY_256_LOOKUP_101 = [_GRAY_256_LOOKUP[int_scale(n, 101, 0x100)] for n in range(101)]
+_CUBE_88_LOOKUP_16 = [_CUBE_88_LOOKUP[int_scale(n, 16, 0x100)] for n in range(16)]
+_GRAY_88_LOOKUP_101 = [_GRAY_88_LOOKUP[int_scale(n, 101, 0x100)] for n in range(101)]
 
 
 # The functions _gray_num_256() and _gray_num_88() do not include the gray
@@ -241,7 +289,6 @@ def _gray_num_88(gnum: int) -> int:
 
 
 def _color_desc_true(num: int) -> str:
-
     return f"#{num:06x}"
 
 
@@ -266,16 +313,17 @@ def _color_desc_256(num: int) -> str:
     'g11'
 
     """
-    assert num >= 0 and num < 256, num
+    if not 0 <= num < 256:
+        raise ValueError(num)
     if num < _CUBE_START:
-        return f'h{num:d}'
+        return f"h{num:d}"
     if num < _GRAY_START_256:
         num -= _CUBE_START
         b, num = num % _CUBE_SIZE_256, num // _CUBE_SIZE_256
         g, num = num % _CUBE_SIZE_256, num // _CUBE_SIZE_256
         r = num % _CUBE_SIZE_256
-        return f'#{_CUBE_STEPS_256_16[r]:x}{_CUBE_STEPS_256_16[g]:x}{_CUBE_STEPS_256_16[b]:x}'
-    return f'g{_GRAY_STEPS_256_101[num - _GRAY_START_256]:d}'
+        return f"#{_CUBE_STEPS_256_16[r]:x}{_CUBE_STEPS_256_16[g]:x}{_CUBE_STEPS_256_16[b]:x}"
+    return f"g{_GRAY_STEPS_256_101[num - _GRAY_START_256]:d}"
 
 
 def _color_desc_88(num: int) -> str:
@@ -299,19 +347,19 @@ def _color_desc_88(num: int) -> str:
     'g45'
 
     """
-    assert 0 < num < 88
+    if not 0 < num < 88:
+        raise ValueError(num)
     if num < _CUBE_START:
-        return f'h{num:d}'
+        return f"h{num:d}"
     if num < _GRAY_START_88:
         num -= _CUBE_START
         b, num = num % _CUBE_SIZE_88, num // _CUBE_SIZE_88
         g, r = num % _CUBE_SIZE_88, num // _CUBE_SIZE_88
-        return f'#{_CUBE_STEPS_88_16[r]:x}{_CUBE_STEPS_88_16[g]:x}{_CUBE_STEPS_88_16[b]:x}'
-    return f'g{_GRAY_STEPS_88_101[num - _GRAY_START_88]:d}'
+        return f"#{_CUBE_STEPS_88_16[r]:x}{_CUBE_STEPS_88_16[g]:x}{_CUBE_STEPS_88_16[b]:x}"
+    return f"g{_GRAY_STEPS_88_101[num - _GRAY_START_88]:d}"
 
 
 def _parse_color_true(desc: str) -> int | None:
-
     c = _parse_color_256(desc)
     if c is not None:
         (r, g, b) = _COLOR_VALUES_256[c]
@@ -322,7 +370,7 @@ def _parse_color_true(desc: str) -> int | None:
     if len(desc) == 7:
         h = desc[1:]
         return int(h, 16)
-    elif len(desc) == 4:
+    if len(desc) == 4:
         h = f"0x{desc[1]}0{desc[2]}0{desc[3]}"
         return int(h, 16)
     return None
@@ -351,14 +399,14 @@ def _parse_color_256(desc: str) -> int | None:
         # keep the length within reason before parsing
         return None
     try:
-        if desc.startswith('h'):
+        if desc.startswith("h"):
             # high-color number
             num = int(desc[1:], 10)
             if num < 0 or num > 255:
                 return None
             return num
 
-        if desc.startswith('#') and len(desc) == 4:
+        if desc.startswith("#") and len(desc) == 4:
             # color-cube coordinates
             rgb = int(desc[1:], 16)
             if rgb < 0:
@@ -372,13 +420,13 @@ def _parse_color_256(desc: str) -> int | None:
             return _CUBE_START + (r * _CUBE_SIZE_256 + g) * _CUBE_SIZE_256 + b
 
         # Only remaining possibility is gray value
-        if desc.startswith('g#'):
+        if desc.startswith("g#"):
             # hex value 00..ff
             gray = int(desc[2:], 16)
             if gray < 0 or gray > 255:
                 return None
             gray = _GRAY_256_LOOKUP[gray]
-        elif desc.startswith('g'):
+        elif desc.startswith("g"):
             # decimal value 0..100
             gray = int(desc[1:], 10)
             if gray < 0 or gray > 100:
@@ -398,15 +446,10 @@ def _parse_color_256(desc: str) -> int | None:
 
 
 def _true_to_256(desc: str) -> str | None:
-
-    if not (desc.startswith('#') and len(desc) == 7):
+    if not (desc.startswith("#") and len(desc) == 7):
         return None
 
-    c256 = _parse_color_256("#" + "".join([
-        format(int(x, 16)//16, "x")
-        for x in [desc[1:3], desc[3:5], desc[5:7] ]
-    ]
-    ))
+    c256 = _parse_color_256("#" + "".join(format(int(x, 16) // 16, "x") for x in (desc[1:3], desc[3:5], desc[5:7])))
     return _color_desc_256(c256)
 
 
@@ -436,14 +479,14 @@ def _parse_color_88(desc: str) -> int | None:
         # keep the length within reason before parsing
         return None
     try:
-        if desc.startswith('h'):
+        if desc.startswith("h"):
             # high-color number
             num = int(desc[1:], 10)
             if num < 0 or num > 87:
                 return None
             return num
 
-        if desc.startswith('#') and len(desc) == 4:
+        if desc.startswith("#") and len(desc) == 4:
             # color-cube coordinates
             rgb = int(desc[1:], 16)
             if rgb < 0:
@@ -457,13 +500,13 @@ def _parse_color_88(desc: str) -> int | None:
             return _CUBE_START + (r * _CUBE_SIZE_88 + g) * _CUBE_SIZE_88 + b
 
         # Only remaining possibility is gray value
-        if desc.startswith('g#'):
+        if desc.startswith("g#"):
             # hex value 00..ff
             gray = int(desc[2:], 16)
             if gray < 0 or gray > 255:
                 return None
             gray = _GRAY_88_LOOKUP[gray]
-        elif desc.startswith('g'):
+        elif desc.startswith("g"):
             # decimal value 0..100
             gray = int(desc[1:], 10)
             if gray < 0 or gray > 100:
@@ -546,14 +589,13 @@ class AttrSpec:
         AttrSpec('#ccc', '#000', colors=88)
         """
         if colors not in (1, 16, 88, 256, 2**24):
-            raise AttrSpecError(f'invalid number of colors ({colors:d}).')
-        self.__value = 0 | _HIGH_88_COLOR * (colors == 88) | _HIGH_TRUE_COLOR * (colors == 2 ** 24)
+            raise AttrSpecError(f"invalid number of colors ({colors:d}).")
+        self.__value = 0 | _HIGH_88_COLOR * (colors == 88) | _HIGH_TRUE_COLOR * (colors == 2**24)
         self.__set_foreground(fg)
         self.__set_background(bg)
         if self.colors > colors:
             raise AttrSpecError(
-                f'foreground/background ({fg!r}/{bg!r}) '
-                f'require more colors than have been specified ({colors:d}).'
+                f"foreground/background ({fg!r}/{bg!r}) require more colors than have been specified ({colors:d})."
             )
 
     def copy_modified(
@@ -684,7 +726,7 @@ class AttrSpec:
     def _foreground_color(self) -> str:
         """Return only the color component of the foreground."""
         if not (self.foreground_basic or self.foreground_high or self.foreground_true):
-            return 'default'
+            return "default"
         if self.foreground_basic:
             return _BASIC_COLORS[self.foreground_number]
         if self.colors == 88:
@@ -697,29 +739,28 @@ class AttrSpec:
     def foreground(self) -> str:
         return (
             self._foreground_color()
-            + ',bold' * self.bold
-            + ',italics' * self.italics
-            + ',standout' * self.standout
-            + ',blink' * self.blink
-            + ',underline' * self.underline
-            + ',strikethrough' * self.strikethrough
+            + ",bold" * self.bold
+            + ",italics" * self.italics
+            + ",standout" * self.standout
+            + ",blink" * self.blink
+            + ",underline" * self.underline
+            + ",strikethrough" * self.strikethrough
         )
 
     def __set_foreground(self, foreground: str) -> None:
         color = None
         flags = 0
         # handle comma-separated foreground
-        for part in foreground.split(','):
-            part = part.strip()
+        for part in foreground.split(","):
+            part = part.strip()  # noqa: PLW2901
             if part in _ATTRIBUTES:
                 # parse and store "settings"/attributes in flags
                 if flags & _ATTRIBUTES[part]:
-                    raise AttrSpecError(
-                        f"Setting {part!r} specified more than once in foreground ({foreground!r})")
+                    raise AttrSpecError(f"Setting {part!r} specified more than once in foreground ({foreground!r})")
                 flags |= _ATTRIBUTES[part]
                 continue
             # past this point we must be specifying a color
-            if part in ('', 'default'):
+            if part in ("", "default"):
                 scolor = 0
             elif part in _BASIC_COLORS:
                 scolor = _BASIC_COLORS.index(part)
@@ -756,7 +797,7 @@ class AttrSpec:
     def background(self) -> str:
         """Return the background color."""
         if not (self.background_basic or self.background_high or self.background_true):
-            return 'default'
+            return "default"
         if self.background_basic:
             return _BASIC_COLORS[self.background_number]
         if self.__value & _HIGH_88_COLOR:
@@ -767,7 +808,7 @@ class AttrSpec:
 
     def __set_background(self, background: str) -> None:
         flags = 0
-        if background in ('', 'default'):
+        if background in ("", "default"):
             color = 0
         elif background in _BASIC_COLORS:
             color = _BASIC_COLORS.index(background)
@@ -811,29 +852,31 @@ class AttrSpec:
         if not (self.foreground_basic or self.foreground_high or self.foreground_true):
             vals = (None, None, None)
         elif self.colors == 88:
-            assert self.foreground_number < 88, "Invalid AttrSpec _value"
+            if self.foreground_number >= 88:
+                raise ValueError(f"Invalid AttrSpec _value: {self.foreground_number!r}")
             vals = _COLOR_VALUES_88[self.foreground_number]
         elif self.colors == 2**24:
             h = f"{self.foreground_number:06x}"
-            vals = tuple([int(x, 16) for x in [h[0:2], h[2:4], h[4:6]]])
+            vals = tuple(int(x, 16) for x in (h[0:2], h[2:4], h[4:6]))
         else:
             vals = _COLOR_VALUES_256[self.foreground_number]
 
         if not (self.background_basic or self.background_high or self.background_true):
-            return vals + (None, None, None)
-        elif self.colors == 88:
-            assert self.background_number < 88, "Invalid AttrSpec _value"
+            return (*vals, None, None, None)
+        if self.colors == 88:
+            if self.background_number >= 88:
+                raise ValueError(f"Invalid AttrSpec _value: {self.background_number!r}")
             return vals + _COLOR_VALUES_88[self.background_number]
-        elif self.colors == 2**24:
+        if self.colors == 2**24:
             h = f"{self.background_number:06x}"
-            return vals + tuple([int(x, 16) for x in [h[0:2], h[2:4], h[4:6]]])
-        else:
-            return vals + _COLOR_VALUES_256[self.background_number]
+            return vals + tuple(int(x, 16) for x in (h[0:2], h[2:4], h[4:6]))
 
-    def __eq__(self, other: typing.Any) -> bool:
+        return vals + _COLOR_VALUES_256[self.background_number]
+
+    def __eq__(self, other: object) -> bool:
         return isinstance(other, AttrSpec) and self.__value == other.__value
 
-    def __ne__(self, other: typing.Any) -> bool:
+    def __ne__(self, other: object) -> bool:
         return not self == other
 
 
@@ -845,11 +888,11 @@ class RealTerminal:
 
     def tty_signal_keys(
         self,
-        intr: Literal['undefined'] | int | None = None,
-        quit: Literal['undefined'] | int | None = None,
-        start: Literal['undefined'] | int | None = None,
-        stop: Literal['undefined'] | int | None = None,
-        susp: Literal['undefined'] | int | None = None,
+        intr: Literal["undefined"] | int | None = None,
+        quit: Literal["undefined"] | int | None = None,  # noqa: A002
+        start: Literal["undefined"] | int | None = None,
+        stop: Literal["undefined"] | int | None = None,
+        susp: Literal["undefined"] | int | None = None,
         fileno: int | None = None,
     ):
         """
@@ -868,7 +911,7 @@ class RealTerminal:
         if fileno is None:
             fileno = sys.stdin.fileno()
         if not os.isatty(fileno):
-            return
+            return None
 
         tattr = termios.tcgetattr(fileno)
         sattr = tattr[6]
@@ -880,17 +923,27 @@ class RealTerminal:
             sattr[termios.VSUSP],
         )
 
-        if intr == 'undefined': intr = 0
-        if quit == 'undefined': quit = 0
-        if start == 'undefined': start = 0
-        if stop == 'undefined': stop = 0
-        if susp == 'undefined': susp = 0
+        if intr == "undefined":
+            intr = 0
+        if quit == "undefined":
+            quit = 0  # noqa: A001
+        if start == "undefined":
+            start = 0
+        if stop == "undefined":
+            stop = 0
+        if susp == "undefined":
+            susp = 0
 
-        if intr is not None: tattr[6][termios.VINTR] = intr
-        if quit is not None: tattr[6][termios.VQUIT] = quit
-        if start is not None: tattr[6][termios.VSTART] = start
-        if stop is not None: tattr[6][termios.VSTOP] = stop
-        if susp is not None: tattr[6][termios.VSUSP] = susp
+        if intr is not None:
+            tattr[6][termios.VINTR] = intr
+        if quit is not None:
+            tattr[6][termios.VQUIT] = quit
+        if start is not None:
+            tattr[6][termios.VSTART] = start
+        if stop is not None:
+            tattr[6][termios.VSTOP] = stop
+        if susp is not None:
+            tattr[6][termios.VSUSP] = susp
 
         if any(item is not None for item in (intr, quit, start, stop, susp)):
             termios.tcsetattr(fileno, termios.TCSADRAIN, tattr)
@@ -907,7 +960,8 @@ class BaseScreen(metaclass=signals.MetaSignals):
     """
     Base class for Screen classes (raw_display.Screen, .. etc)
     """
-    signals = [UPDATE_PALETTE_ENTRY, INPUT_DESCRIPTORS_CHANGED]
+
+    signals: typing.ClassVar[list[str]] = [UPDATE_PALETTE_ENTRY, INPUT_DESCRIPTORS_CHANGED]
 
     def __init__(self) -> None:
         super().__init__()
@@ -956,6 +1010,7 @@ class BaseScreen(metaclass=signals.MetaSignals):
         warnings.warn(
             "run_wrapper is deprecated in favor of calling `start` as a context manager.",
             DeprecationWarning,
+            stacklevel=3,
         )
         with self.start(*args, **kwargs):
             return fn()
@@ -963,11 +1018,8 @@ class BaseScreen(metaclass=signals.MetaSignals):
     def register_palette(
         self,
         palette: Iterable[
-            tuple[str, str]
-            | tuple[str, str, str]
-            | tuple[str, str, str, str]
-            | tuple[str, str, str, str, str, str]
-        ]
+            tuple[str, str] | tuple[str, str, str] | tuple[str, str, str, str] | tuple[str, str, str, str, str, str]
+        ],
     ) -> None:
         """Register a set of palette entries.
 
@@ -1081,10 +1133,10 @@ class BaseScreen(metaclass=signals.MetaSignals):
         # basic colors for 88-color mode if high colors are specified
         # in this way (also avoids crash when X > 87)
         def large_h(desc: str) -> bool:
-            if not desc.startswith('h'):
+            if not desc.startswith("h"):
                 return False
-            if ',' in desc:
-                desc = desc.split(',',1)[0]
+            if "," in desc:
+                desc = desc.split(",", 1)[0]
             num = int(desc[1:], 10)
             return num > 15
 
@@ -1093,15 +1145,15 @@ class BaseScreen(metaclass=signals.MetaSignals):
         else:
             high_88 = AttrSpec(foreground_high, background_high, 88)
 
-        signals.emit_signal(self, UPDATE_PALETTE_ENTRY,
-                            name, basic, mono, high_88, high_256, high_true)
+        signals.emit_signal(self, UPDATE_PALETTE_ENTRY, name, basic, mono, high_88, high_256, high_true)
         self._palette[name] = (basic, mono, high_88, high_256, high_true)
 
 
 def _test():
     import doctest
+
     doctest.testmod()
 
 
-if __name__=='__main__':
+if __name__ == "__main__":
     _test()

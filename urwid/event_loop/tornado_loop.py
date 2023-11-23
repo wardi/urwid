@@ -26,9 +26,9 @@ Tornado library is required.
 
 from __future__ import annotations
 
-import contextlib
 import functools
 import typing
+from contextlib import suppress
 
 from tornado import ioloop
 
@@ -93,7 +93,7 @@ class TornadoEventLoop(EventLoop):
         @self._also_call_idle
         @functools.wraps(callback)
         def wrapped() -> None:
-            with contextlib.suppress(KeyError):
+            with suppress(KeyError):
                 del self._pending_alarms[handle]
 
             self.handle_exit(callback)()

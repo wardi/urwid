@@ -1,18 +1,18 @@
 {%- if pagename.startswith('manual/') -%}
-  <h3>Table of contents</a></h3>
+  <h3>Table of contents</h3>
     <ul><li><a href="index.html">Manual</a></li>
     {%- if display_toc -%}
       {{ toc }}
     {%- endif %}
     </ul>
 {%- elif pagename.startswith('reference/') -%}
-  <h3>Table of contents</a></h3>
+  <h3>Table of contents</h3>
     <ul><li><a href="index.html">Reference</a></li>
     {%- if display_toc -%}
       {{ toc }}
     {%- endif %}
     </ul>
 {%- elif display_toc -%}
-  <h3>Table of contents</a></h3>
+  <h3>Table of contents</h3>
   {{ toc }}
 {% endif %}

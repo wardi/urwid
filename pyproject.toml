@@ -3,7 +3,7 @@
 # PEP 508 specifications for PEP 518.
 requires = [
     "setuptools >= 61.0.0",
-    "setuptools_scm[toml]>=6.2",
+    "setuptools_scm[toml]>=7.0",
     "wheel",
 ]
 build-backend="setuptools.build_meta"
@@ -34,6 +34,7 @@ exclude = [
   "docs",
   "examples",
   "test",
+  "tests",
   "bin",
   ".*"
 ]
@@ -42,6 +43,16 @@ namespaces = false
 [tool.setuptools.dynamic]
 #dependencies = {file = ["requirements.txt"]}
 classifiers = {file = ["classifiers.txt"]}
+
+[project.optional-dependencies]
+glib = ["PyGObject"]
+tornado = ["tornado"]
+trio = ["trio"]
+twisted = ["twisted"]
+zmq = ["zmq"]
+# for lcd_display
+serial = ["pyserial"]
+lcd = ["pyserial"]
 
 [tool.distutils.bdist_wheel]
 universal = 0
@@ -60,7 +71,6 @@ line_length = 120
 
 [tool.black]
 line-length = 120
-skip-string-normalization = true
 safe = true
 
 [tool.pytest.ini_options]
@@ -70,7 +80,7 @@ doctest_optionflags = ["ELLIPSIS", "IGNORE_EXCEPTION_DETAIL"]
 testpaths = ["urwid"]
 
 [tool.coverage.run]
-omit = ["urwid/tests/*", ".tox/*", "setup.py"]
+omit = ["tests/*", ".tox/*", "setup.py"]
 branch = true
 
 [tool.coverage.report]
@@ -125,8 +135,10 @@ ignore_missing_imports = true
 line-length = 120
 show-source = true
 target-version = "py37"
+ignore-init-module-imports = true
 
 extend-select = [
+  "E",
   "W",  # also pycodestyle warnings
   "PYI",  # flake8-pyi
   "ASYNC",  # flake8-async
@@ -144,11 +156,16 @@ extend-select = [
   "TRY", "UP", "I", "PL", "PERF", "RUF",  # tryceratops, pyupgrade, isort, pylint + perflint, Ruff-specific
 ]
 extend-ignore = [
-  "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004",  # refactor rules (too many statements/arguments/branches)
+  "PLR6301", "E203", "PLW3201",
+    # refactor rules (too many statements/arguments/branches)
+  "PLR0904", "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004",
   "RET504",  # Unnecessary variable assignment before return statement
   "SIM108",  # Use ternary operator,
   "TRY003",  #long messages prepare outside, ...
 ]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401", "SIM105"]
 
 [tool.ruff.isort]
 known-third-party = []

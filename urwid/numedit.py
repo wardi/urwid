@@ -22,10 +22,14 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Container
+import warnings
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from urwid import Edit
+
+if TYPE_CHECKING:
+    from collections.abc import Container
 
 
 class NumEdit(Edit):
@@ -38,6 +42,7 @@ class NumEdit(Edit):
       + regular oct: 01234567
       + regular hex: 0123456789abcdef
     """
+
     ALLOWED = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
     def __init__(
@@ -45,39 +50,70 @@ class NumEdit(Edit):
         allowed: Container[str],
         caption,
         default: str | bytes,
-        trimLeadingZeros: bool = True,
+        trimLeadingZeros: bool | None = None,
+        *,
+        trim_leading_zeros: bool = True,
+        allow_negative: bool = False,
     ):
         super().__init__(caption, default)
         self._allowed = allowed
-        self.trimLeadingZeros = trimLeadingZeros
+        self._trim_leading_zeros = trim_leading_zeros
+        self._allow_negative = allow_negative
+
+        if trimLeadingZeros is not None:
+            warnings.warn(
+                "'trimLeadingZeros' argument is deprecated. Use 'trim_leading_zeros' keyword argument",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            self._trim_leading_zeros = trimLeadingZeros
 
     def valid_char(self, ch: str) -> bool:
         """
         Return true for allowed characters.
         """
-        return len(ch) == 1 and ch.upper() in self._allowed
+        if len(ch) == 1:
+            if ch.upper() in self._allowed:
+                return True
+
+            return self._allow_negative and ch == "-" and self.edit_pos == 0 and "-" not in self.edit_text
+        return False
 
     def keypress(self, size: tuple[int], key: str) -> str | None:
         """
         Handle editing keystrokes.  Remove leading zeros.
 
-        >>> e, size = NumEdit("0123456789", u"", "5002"), (10,)
+        >>> e, size = NumEdit("0123456789", "", "5002"), (10,)
         >>> e.keypress(size, 'home')
         >>> e.keypress(size, 'delete')
         >>> assert e.edit_text == "002"
         >>> e.keypress(size, 'end')
         >>> assert e.edit_text == "2"
         >>> # binary only
-        >>> e, size = NumEdit("01", u"", ""), (10,)
+        >>> e, size = NumEdit("01", "", ""), (10,)
         >>> assert e.edit_text == ""
         >>> e.keypress(size, '1')
         >>> e.keypress(size, '0')
         >>> e.keypress(size, '1')
         >>> assert e.edit_text == "101"
+        >>> e, size = NumEdit("0123456789", "", "", allow_negative=True), (10,)
+        >>> e.keypress(size, "-")
+        >>> e.keypress(size, '1')
+        >>> e.edit_text
+        '-1'
+        >>> e.keypress(size, 'home')
+        >>> e.keypress(size, 'delete')
+        >>> e.edit_text
+        '1'
+        >>> e.keypress(size, 'end')
+        >>> e.keypress(size, "-")
+        '-'
+        >>> e.edit_text
+        '1'
         """
         unhandled = super().keypress(size, key)
 
-        if not unhandled and self.trimLeadingZeros:
+        if not unhandled and self._trim_leading_zeros:
             # trim leading zeros
             while self.edit_pos > 0 and self.edit_text[:1] == "0":
                 self.set_edit_pos(self.edit_pos - 1)
@@ -94,6 +130,8 @@ class IntegerEdit(NumEdit):
         caption="",
         default: int | str | Decimal | None = None,
         base: int = 10,
+        *,
+        allow_negative: bool = False,
     ) -> None:
         """
         caption -- caption markup
@@ -151,7 +189,7 @@ class IntegerEdit(NumEdit):
         """
         self.base = base
         val = ""
-        allowed_chars = self.ALLOWED[:self.base]
+        allowed_chars = self.ALLOWED[: self.base]
         if default is not None:
             if not isinstance(default, (int, str, Decimal)):
                 raise ValueError("default: Only 'str', 'int' or Decimal input allowed")
@@ -164,15 +202,20 @@ class IntegerEdit(NumEdit):
                 if not re.match(validation_re, str(default), re.IGNORECASE):
                     raise ValueError(f"invalid value: {default} for base {base}")
 
-            elif isinstance(default, Decimal):
+            elif isinstance(default, Decimal) and default.as_tuple()[2] != 0:
                 # a Decimal instance with no fractional part
-                if default.as_tuple()[2] != 0:
-                    raise ValueError("not an 'integer Decimal' instance")
+                raise ValueError("not an 'integer Decimal' instance")
 
             # convert possible int, long or Decimal to str
             val = str(default)
 
-        super().__init__(allowed_chars, caption, val, trimLeadingZeros=(self.base == 10))
+        super().__init__(
+            allowed_chars,
+            caption,
+            val,
+            trim_leading_zeros=(self.base == 10),
+            allow_negative=allow_negative,
+        )
 
     def value(self) -> Decimal | None:
         """
@@ -188,6 +231,20 @@ class IntegerEdit(NumEdit):
 
         return None
 
+    def __int__(self) -> int:
+        """Enforced int value return.
+
+        >>> e, size = IntegerEdit(allow_negative=True), (10,)
+        >>> assert int(e) == 0
+        >>> e.keypress(size, '-')
+        >>> e.keypress(size, '4')
+        >>> e.keypress(size, '2')
+        >>> assert int(e) == -42
+        """
+        if self.edit_text:
+            return int(self.edit_text, self.base)
+        return 0
+
 
 class FloatEdit(NumEdit):
     """Edit widget for float values."""
@@ -196,14 +253,18 @@ class FloatEdit(NumEdit):
         self,
         caption="",
         default: str | int | Decimal | None = None,
-        preserveSignificance: bool = True,
-        decimalSeparator: str = '.',
+        preserveSignificance: bool | None = None,
+        decimalSeparator: str | None = None,
+        *,
+        preserve_significance: bool = True,
+        decimal_separator: str = ".",
+        allow_negative: bool = False,
     ) -> None:
         """
         caption -- caption markup
         default -- default edit value
-        preserveSignificance -- return value has the same signif. as default
-        decimalSeparator -- use '.' as separator by default, optionally a ','
+        preserve_significance -- return value has the same signif. as default
+        decimal_separator -- use '.' as separator by default, optionally a ','
 
         >>> FloatEdit(u"",  "1.065434")
         <FloatEdit selectable flow widget '1.065434' edit_pos=8>
@@ -221,18 +282,18 @@ class FloatEdit(NumEdit):
         >>> e.keypress(size, '5')
         >>> e.keypress(size, '1')
         >>> assert e.value() == Decimal("51.51"), e.value()
-        >>> e, size = FloatEdit(decimalSeparator=":"), (10,)
+        >>> e, size = FloatEdit(decimal_separator=":"), (10,)
         Traceback (most recent call last):
             ...
-        ValueError: invalid decimalSeparator: :
-        >>> e, size = FloatEdit(decimalSeparator=","), (10,)
+        ValueError: invalid decimal separator: :
+        >>> e, size = FloatEdit(decimal_separator=","), (10,)
         >>> e.keypress(size, '5')
         >>> e.keypress(size, '1')
         >>> e.keypress(size, ',')
         >>> e.keypress(size, '5')
         >>> e.keypress(size, '1')
         >>> assert e.edit_text == "51,51"
-        >>> e, size = FloatEdit("", "3.1415", preserveSignificance=True), (10,)
+        >>> e, size = FloatEdit("", "3.1415", preserve_significance=True), (10,)
         >>> e.keypress(size, 'end')
         >>> e.keypress(size, 'backspace')
         >>> e.keypress(size, 'backspace')
@@ -250,9 +311,25 @@ class FloatEdit(NumEdit):
         ValueError: default: Only 'str', 'int', 'long' or Decimal input allowed
         """
         self.significance = None
-        self._decimalSeparator = decimalSeparator
-        if decimalSeparator not in ['.', ',']:
-            raise ValueError(f"invalid decimalSeparator: {decimalSeparator}")
+        self._decimal_separator = decimal_separator
+        if decimalSeparator is not None:
+            warnings.warn(
+                "'decimalSeparator' argument is deprecated. Use 'decimal_separator' keyword argument",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            self._decimal_separator = decimalSeparator
+
+        if self._decimal_separator not in (".", ","):
+            raise ValueError(f"invalid decimal separator: {self._decimal_separator}")
+
+        if preserveSignificance is not None:
+            warnings.warn(
+                "'preserveSignificance' argument is deprecated. Use 'preserve_significance' keyword argument",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            preserve_significance = preserveSignificance
 
         val = ""
         if default is not None and default != "":
@@ -264,22 +341,36 @@ class FloatEdit(NumEdit):
                 float(default)
                 default = Decimal(default)
 
-            if preserveSignificance and isinstance(default, Decimal):
+            if preserve_significance and isinstance(default, Decimal):
                 self.significance = default
 
             val = str(default)
 
-        super().__init__(self.ALLOWED[0:10] + decimalSeparator,
-                                        caption, val)
+        super().__init__(self.ALLOWED[0:10] + self._decimal_separator, caption, val, allow_negative=allow_negative)
 
     def value(self) -> Decimal | None:
         """
         Return the numeric value of self.edit_text.
         """
         if self.edit_text:
-            normalized = Decimal(self.edit_text.replace(self._decimalSeparator, '.'))
+            normalized = Decimal(self.edit_text.replace(self._decimal_separator, "."))
             if self.significance is not None:
                 return normalized.quantize(self.significance)
             return normalized
 
         return None
+
+    def __float__(self) -> float:
+        """Enforced float value return.
+
+        >>> e, size = FloatEdit(allow_negative=True), (10,)
+        >>> assert float(e) == 0.
+        >>> e.keypress(size, '-')
+        >>> e.keypress(size, '4')
+        >>> e.keypress(size, '.')
+        >>> e.keypress(size, '2')
+        >>> assert float(e) == -4.2
+        """
+        if self.edit_text:
+            return float(self.edit_text.replace(self._decimal_separator, "."))
+        return 0.0

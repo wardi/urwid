@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import contextlib
 import unittest
 from collections.abc import Generator
+from contextlib import contextmanager
 
 import urwid
 
 
-@contextlib.contextmanager
+@contextmanager
 def encoding(encoding_name: str) -> Generator[None, None, None]:
     old_encoding = 'ascii'  # Default fallback value
     try:
@@ -112,13 +112,11 @@ class EditRenderTest(unittest.TestCase):
     def rtest(self, w, expected_text, expected_cursor):
         expected_text = [t.encode('iso8859-1') for t in expected_text]
         get_cursor = w.get_cursor_coords((4,))
-        assert get_cursor == expected_cursor, "got: %r expected: %r" % (
-            get_cursor, expected_cursor)
+        assert get_cursor == expected_cursor, f"got: {get_cursor!r} expected: {expected_cursor!r}"
         r = w.render((4,), focus = 1)
         text = [t for a, cs, t in [ln[0] for ln in r.content()]]
         assert text == expected_text, f"got: {text!r} expected: {expected_text!r}"
-        assert r.cursor == expected_cursor, "got: %r expected: %r" % (
-            r.cursor, expected_cursor)
+        assert r.cursor == expected_cursor, f"got: {r.cursor!r} expected: {expected_cursor!r}"
 
     def test1_SpaceWrap(self):
         w = urwid.Edit("","blah blah")

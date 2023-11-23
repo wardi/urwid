@@ -1,5 +1,3 @@
-#!/usr/bin/python
-#
 # Urwid split_repr helper functions
 #    Copyright (C) 2004-2011  Ian Ward
 #
@@ -55,10 +53,10 @@ def split_repr(self):
         # if we're just going to print the classname fall back
         # to the previous __repr__ implementation instead
         return super(self.__class__, self).__repr__()
-    if words and alist: words.append("")
-    return "<%s %s>" % (self.__class__.__name__,
-        " ".join(words) +
-        " ".join(["%s=%s" % itm for itm in alist]))
+    if words and alist:
+        words.append("")
+    return f"<{self.__class__.__name__} {' '.join(words) + ' '.join([f'{k}={v}' for k, v in alist])}>"
+
 
 def normalize_repr(v):
     """
@@ -72,7 +70,7 @@ def normalize_repr(v):
     if isinstance(v, dict):
         items = sorted((repr(k), repr(v)) for k, v in v.items())
 
-        return f"{{{', '.join([('%s: %s' % itm) for itm in items])}}}"
+        return f"{{{', '.join(f'{k}: {v}' for k, v in items)}}}"
 
     return repr(v)
 
@@ -112,21 +110,21 @@ def remove_defaults(d, fn):
         del args[-1]
 
     # create a dictionary of args with default values
-    ddict = dict(list(zip(args[len(args) - len(defaults):], defaults)))
+    ddict = dict(zip(args[len(args) - len(defaults) :], defaults))
 
     for k in list(d.keys()):
-        if k in ddict:
+        if k in ddict and ddict[k] == d[k]:
             # remove values that match their defaults
-            if ddict[k] == d[k]:
-                del d[k]
+            del d[k]
 
     return d
 
 
-
 def _test():
     import doctest
+
     doctest.testmod()
 
-if __name__=='__main__':
+
+if __name__ == "__main__":
     _test()

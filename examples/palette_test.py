@@ -263,7 +263,7 @@ def parse_chart(chart, convert):
         (attr, text) tuple, or None if no match is found
     """
     out = []
-    for match in re.finditer(ATTR_RE, chart):
+    for match in ATTR_RE.finditer(chart):
         if match.group("whitespace"):
             out.append(match.group("whitespace"))
         entry = match.group("entry")
