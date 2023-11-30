@@ -32,9 +32,7 @@ jobs:
     strategy:
       max-parallel: 6
       matrix:
-        os: [ "ubuntu-latest" ]
-        # , "macos-latest", "windows-latest"
-        # enable macOS only if OS specific branch will be added
+        os: [ "ubuntu-latest", "macos-latest" ]  # , "windows-latest"
         # enable windows after Windows driver will be added
         python-version: [ "3.7", "3.8", "3.9", "3.10", "3.11", "3.12" ]
 
