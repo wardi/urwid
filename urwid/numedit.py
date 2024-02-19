@@ -79,7 +79,7 @@ class NumEdit(Edit):
             return self._allow_negative and ch == "-" and self.edit_pos == 0 and "-" not in self.edit_text
         return False
 
-    def keypress(self, size: tuple[int], key: str) -> str | None:
+    def keypress(self, size: tuple[int] | tuple[()], key: str) -> str | None:
         """
         Handle editing keystrokes.  Remove leading zeros.
 

@@ -121,6 +121,22 @@ class Edit(Text):
         self.set_mask(mask)
         self._shift_view_to_cursor = False
 
+    def pack(self, size: tuple[int] | tuple[()] | None = None, focus: bool = False) -> tuple[int, int]:
+        """
+        Return the number of screen columns and rows required for this Edit widget to be displayed
+        without wrapping or clipping, as a single element tuple.
+
+        Due to "SELECTABLE" specific, an extra 1 symbol is reserved in "FIXED" pack mode
+        to prevent clipping for cursor rendering when the widget is focused.
+        """
+        cols, rows = super().pack(size, focus)
+        if size:
+            return cols, rows
+
+        if self.get_cursor_coords((cols,))[0] == cols:
+            cols += 1  # space for cursor to avoid hiding of the last symbol
+        return cols, rows
+
     def _repr_words(self) -> list[str]:
         return (
             super()._repr_words()[:-1]
@@ -171,7 +187,7 @@ class Edit(Text):
 
         raise EditError("set_text() not supported.  Use set_caption() or set_edit_text() instead.")
 
-    def get_pref_col(self, size: tuple[int]) -> int:
+    def get_pref_col(self, size: tuple[int] | tuple[()]) -> int:
         """
         Return the preferred column for the cursor, or the
         current cursor x value.  May also return ``'left'`` or ``'right'``
@@ -202,7 +218,11 @@ class Edit(Text):
         >>> e.get_pref_col(size)
         0
         """
-        (maxcol,) = size
+        if size:
+            (maxcol,) = size
+        else:
+            maxcol, _ = self.pack(())
+
         pref_col, then_maxcol = self.pref_col_maxcol
         if then_maxcol != maxcol:
             return self.get_cursor_coords((maxcol,))[0]
@@ -400,7 +420,7 @@ class Edit(Text):
         result_pos += len(text)
         return (result_text, result_pos)
 
-    def keypress(self, size: tuple[int], key: str) -> str | None:
+    def keypress(self, size: tuple[int] | tuple[()], key: str) -> str | None:
         """
         Handle editing keystrokes, return others.
 
@@ -510,7 +530,7 @@ class Edit(Text):
 
     def move_cursor_to_coords(
         self,
-        size: tuple[int],
+        size: tuple[int] | tuple[()],
         x: int | Literal[Align.LEFT, Align.RIGHT],
         y: int,
     ) -> bool:
@@ -531,7 +551,11 @@ class Edit(Text):
         >>> e.edit_pos
         5
         """
-        (maxcol,) = size
+        if size:
+            (maxcol,) = size
+        else:
+            maxcol, _ = self.pack(())
+
         trans = self.get_line_translation(maxcol)
         _top_x, top_y = self.position_coords(maxcol, 0)
         if y < top_y or y >= len(trans):
@@ -546,7 +570,7 @@ class Edit(Text):
 
     def mouse_event(
         self,
-        size: tuple[int],
+        size: tuple[int] | tuple[()],
         event: str,
         button: int,
         col: int,
@@ -581,7 +605,7 @@ class Edit(Text):
         self.highlight = None
         return True
 
-    def render(self, size: tuple[int], focus: bool = False) -> TextCanvas | CompositeCanvas:
+    def render(self, size: tuple[int] | tuple[()], focus: bool = False) -> TextCanvas | CompositeCanvas:
         """
         Render edit widget and return canvas.  Include cursor when in
         focus.
@@ -633,14 +657,17 @@ class Edit(Text):
 
         return trans
 
-    def get_cursor_coords(self, size: tuple[int]) -> tuple[int, int]:
+    def get_cursor_coords(self, size: tuple[int] | tuple[()]) -> tuple[int, int]:
         """
         Return the (*x*, *y*) coordinates of cursor within widget.
 
         >>> Edit("? ","yes").get_cursor_coords((10,))
         (5, 0)
         """
-        (maxcol,) = size
+        if size:
+            (maxcol,) = size
+        else:
+            maxcol, _ = self.pack(())
 
         self._shift_view_to_cursor = True
         return self.position_coords(maxcol, self.edit_pos)
@@ -679,7 +706,7 @@ class IntEdit(Edit):
             val = ""
         super().__init__(caption, val)
 
-    def keypress(self, size: tuple[int], key: str) -> str | None:
+    def keypress(self, size: tuple[int] | tuple[()], key: str) -> str | None:
         """
         Handle editing keystrokes.  Remove leading zeros.
 
