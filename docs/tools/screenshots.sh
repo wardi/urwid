@@ -10,19 +10,17 @@ urxvt -bg gray90 -b 0 +sb -fn '-misc-fixed-medium-*-*-*-*-140-*-*-*-*-*-*' \
 	-fb '-misc-fixed-bold-*-*-*-*-140-*-*-*-*-*-*' \
 	-name "$CLASSNAME" -e "$PYTHON" "$1" &
 RXVTPID=$!
-until RXVTWINDOWID=$(xdotool search --classname "$CLASSNAME"); do
-	sleep 0.1
-done
+RXVTWINDOWID=$(xdotool search --sync --classname "$CLASSNAME")
 export RXVTWINDOWID
 image=${1%.py}
 
-c=1
+counter=1
 while read -r line; do
 	# the echo trick is needed to expand RXVTWINDOWID variable
 	echo $line | xdotool -
 	echo "sending $line"
-	import -window "$RXVTWINDOWID" "${image}$c.png"
-	(( c++ ))
+	import -window "$RXVTWINDOWID" "${image}$counter.png"
+	(( counter++ ))
 done
 
 kill $RXVTPID
