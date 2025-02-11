@@ -963,13 +963,9 @@ class ScreenError(Exception):
     pass
 
 
-class BaseMeta(signals.MetaSignals, abc.ABCMeta):
-    """Base metaclass for abstra"""
-
-
-class BaseScreen(metaclass=BaseMeta):
+class BaseScreen(abc.ABC, metaclass=signals.MetaSignals):
     """
-    Base class for Screen classes (raw_display.Screen, .. etc)
+    Base class for Screen classes (raw_display.Screen, ..., etc.)
     """
 
     signals: typing.ClassVar[list[str]] = [UPDATE_PALETTE_ENTRY, INPUT_DESCRIPTORS_CHANGED]

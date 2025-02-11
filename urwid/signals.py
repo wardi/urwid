@@ -20,6 +20,7 @@
 
 from __future__ import annotations
 
+import abc
 import itertools
 import typing
 import warnings
@@ -29,7 +30,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Callable, Collection, Container, Hashable, Iterable
 
 
-class MetaSignals(type):
+class MetaSignals(abc.ABCMeta):
     """
     register the list of signals in the class variable signals,
     including signals in superclasses.
